@@ -84,7 +84,7 @@ code.jush-sql { background: transparent; font-size: 12px; padding: 5px 10px; }
 #schema { margin-left: 60px; position: relative; -moz-user-select: none; -webkit-user-select: none; }
 #schema .table { border: 1px solid silver; padding: 0 2px; cursor: move; position: absolute; }
 #schema .references { position: absolute; }
-#help { position: absolute; border: 1px solid #999; background: #eee; padding: 5px 10px; border-radius: 2px; box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.2); font-family: "SF Mono", Monaco, Courier, monospace; z-index: 1; }
+#help { position: absolute; border: 1px solid #999; background: #eee; padding: 5px 10px; border-radius: 2px; box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.2); font: 12px/1.25 "SF Mono", Monaco, Courier, monospace; z-index: 1; }
 
 a[id^="Db-"], a[id^="Table-"] { display: block; padding: .2em .3em; margin: -.2em -.3em; line-height: 1.5em; }
 td[id^="Comment-"] { color: rgba(0, 0, 0, 0.8); }
