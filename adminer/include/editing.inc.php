@@ -469,7 +469,8 @@ function create_routine($routine, $row) {
 * @return string
 */
 function remove_definer($query) {
-	return preg_replace('~^([A-Z =]+) DEFINER=`' . preg_replace('~@(.*)~', '`@`(%|\1)', logged_user()) . '`~', '\1', $query); //! proper escaping of user
+	return preg_replace('/\sDEFINER=`.+?`@`.+?`/', '', $query); // completely remove DEFINER
+	/* return preg_replace('~^([A-Z =]+) DEFINER=`' . preg_replace('~@(.*)~', '`@`(%|\1)', logged_user()) . '`~', '\1', $query); //! proper escaping of user */
 }
 
 /** Format foreign key to use in SQL query

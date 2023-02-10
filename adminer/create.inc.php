@@ -5,7 +5,7 @@ foreach (array('HASH', 'LINEAR HASH', 'KEY', 'LINEAR KEY', 'RANGE', 'LIST') as $
 	$partition_by[$key] = $key;
 }
 
-$referencable_primary = referencable_primary($TABLE);
+$referencable_primary = array();/* referencable_primary($TABLE); */
 $foreign_keys = array();
 foreach ($referencable_primary as $table_name => $field) {
 	$foreign_keys[str_replace("`", "``", $table_name) . "`" . str_replace("`", "``", $field["field"])] = $table_name; // not idf_escape() - used in JS
