@@ -1165,8 +1165,8 @@ if (!defined("DRIVER")) {
 			'grouping' => array("avg", "count", "count distinct", "group_concat", "max", "min", "sum"), ///< @var array grouping functions used in select
 			'edit_functions' => array( ///< @var array of array("$type|$type2" => "$function/$function2") functions used in editing, [0] - edit and insert, [1] - edit only
 				array(
-					"char" => "md5/sha1/password/encrypt/uuid",
-					"binary" => "md5/sha1",
+					"char" => "md5/sha1/password/encrypt/uuid/uuid_to_bin",
+					"binary" => "md5/sha1/bin_to_uuid",
 					"date|time" => "now",
 				), array(
 					number_type() => "+/-",

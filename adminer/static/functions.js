@@ -487,6 +487,7 @@ function bodyKeydown(event, button) {
 	if (target.jushTextarea) {
 		target = target.jushTextarea;
 	}
+	console.log("keydown", event);
 	if (isCtrl(event) && (event.keyCode == 13 || event.keyCode == 10) && isTag(target, 'select|textarea|input')) { // 13|10 - Enter
 		target.blur();
 		if (button) {
@@ -499,6 +500,22 @@ function bodyKeydown(event, button) {
 		}
 		target.focus();
 		return false;
+	}
+	else if (event.keyCode == 9 && !event.altKey && isTag(target, 'textarea')) {
+		event.preventDefault();
+		
+		const tab = "\x09";
+		
+		let selection = window.getSelection();
+		let range = selection.getRangeAt(0);
+		range.deleteContents();
+		
+		let node = document.createTextNode(tab);
+		range.insertNode(node);
+		
+		for (let position = 0; position != tab.length; position ++) {
+			selection.modify('move', 'right', 'character');
+		};
 	}
 	return true;
 }
