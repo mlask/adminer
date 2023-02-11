@@ -286,9 +286,9 @@ class Adminer {
 	* @return string
 	*/
 	function selectVal($val, $link, $field, $original) {
-		$return = ($val === null ? "<i>NULL</i>" : (preg_match("~char|binary|boolean~", $field["type"]) && !preg_match("~var~", $field["type"]) ? "<code>$val</code>" : $val));
+		$return = ($val === null ? "<i class='field-null'>NULL</i>" : (preg_match("~char|binary|boolean~", $field["type"]) && !preg_match("~var~", $field["type"]) ? "<code class='field-bin'>$val</code>" : $val));
 		if (preg_match('~blob|bytea|raw|file~', $field["type"]) && !is_utf8($val)) {
-			$return = "<i>" . lang('%d byte(s)', strlen($original)) . "</i>";
+			$return = "<i class='field-blob'>" . lang('%d byte(s)', strlen($original)) . "</i>";
 		}
 		if (preg_match('~json~', $field["type"])) {
 			$return = "<code class='jush-js'>$return</code>";
@@ -705,7 +705,7 @@ class Adminer {
 	function editInput($table, $field, $attrs, $value) {
 		if ($field["type"] == "enum") {
 			return (isset($_GET["select"]) ? "<label><input type='radio'$attrs value='-1' checked><i>" . lang('original') . "</i></label> " : "")
-				. ($field["null"] ? "<label><input type='radio'$attrs value=''" . ($value !== null || isset($_GET["select"]) ? "" : " checked") . "><i>NULL</i></label> " : "")
+				. ($field["null"] ? "<label><input type='radio'$attrs value=''" . ($value !== null || isset($_GET["select"]) ? "" : " checked") . "><i class='field-null'>NULL</i></label> " : "")
 				. enum_input("radio", $attrs, $field, $value, 0) // 0 - empty
 			;
 		}

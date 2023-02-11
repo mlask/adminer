@@ -25,6 +25,7 @@ p { margin: .8em 20px 0 0; }
 img { vertical-align: middle; border: 0; }
 td img { max-width: 200px; max-height: 200px; }
 code { background: #eee; }
+code.field-bin { background: transparent; font-weight: normal; }
 tbody tr:hover td, tbody tr:hover th { background: #eee; }
 pre { margin: 1em 0 0; }
 pre, textarea { font: 12px/1.25 "SF Mono", Monaco, Courier, monospace; }
