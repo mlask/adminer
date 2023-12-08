@@ -61,7 +61,7 @@ if ($oid && !$primary) {
 
 if ($_POST && !$error) {
 	$where_check = $where;
-	if (!$_POST["all"] && is_array($_POST["check"])) {
+	if ((!isset($_POST["all"]) || !$_POST["all"]) && isset($_POST["check"]) && is_array($_POST["check"])) {
 		$checks = array();
 		foreach ($_POST["check"] as $check) {
 			$checks[] = where_check($check, $fields);
@@ -69,7 +69,7 @@ if ($_POST && !$error) {
 		$where_check[] = "((" . implode(") OR (", $checks) . "))";
 	}
 	$where_check = ($where_check ? "\nWHERE " . implode(" AND ", $where_check) : "");
-	if ($_POST["export"]) {
+	if (isset($_POST["export"]) && $_POST["export"]) {
 		cookie("adminer_import", "output=" . urlencode($_POST["output"]) . "&format=" . urlencode($_POST["format"]));
 		dump_headers($TABLE);
 		$adminer->dumpTable($TABLE, "");
@@ -322,9 +322,9 @@ if (!$columns && support("table")) {
 			$rank = 1;
 			foreach ($rows[0] as $key => $val) {
 				if (!isset($unselected[$key])) {
-					$val = $_GET["columns"][key($select)];
+					$val = $_GET["columns"][key($select)] ?? null;
 					$field = $fields[$select ? ($val ? $val["col"] : current($select)) : $key];
-					$name = ($field ? $adminer->fieldName($field, $rank) : ($val["fun"] ? "*" : $key));
+					$name = ($field ? $adminer->fieldName($field, $rank) : (($val["fun"] ?? null) ? "*" : $key));
 					if ($name != "") {
 						$rank++;
 						$names[$key] = $name;
@@ -333,16 +333,16 @@ if (!$columns && support("table")) {
 						$desc = "&desc%5B0%5D=1";
 						echo "<th id='th[" . h(bracket_escape($key)) . "]'>" . script("mixin(qsl('th'), {onmouseover: partial(columnMouse), onmouseout: partial(columnMouse, ' hidden')});", "");
 						echo '<a href="' . h($href . ($order[0] == $column || $order[0] == $key || (!$order && $is_group && $group[0] == $column) ? $desc : '')) . '">'; // $order[0] == $key - COUNT(*)
-						echo apply_sql_function($val["fun"], $name) . "</a>"; //! columns looking like functions
+						echo apply_sql_function($val["fun"] ?? null, $name) . "</a>"; //! columns looking like functions
 						echo "<span class='column hidden'>";
 						echo "<a href='" . h($href . $desc) . "' title='" . lang('descending') . "' class='text'> ↓</a>";
-						if (!$val["fun"]) {
+						if (!isset($val["fun"]) || !$val["fun"]) {
 							echo '<a href="#fieldset-search" title="' . lang('Search') . '" class="text jsonly"> =</a>';
 							echo script("qsl('a').onclick = partial(selectSearch, '" . js_escape($key) . "');");
 						}
 						echo "</span>";
 					}
-					$functions[$key] = $val["fun"];
+					$functions[$key] = $val["fun"] ?? null;
 					next($select);
 				}
 			}
@@ -433,11 +433,11 @@ if (!$columns && support("table")) {
 						
 						$val = select_value($val, $link, $field, $text_length);
 						$id = h("val[$unique_idf][" . bracket_escape($key) . "]");
-						$value = $_POST["val"][$unique_idf][bracket_escape($key)];
+						$value = $_POST["val"][$unique_idf][bracket_escape($key)] ?? null;
 						$editable = !is_array($row[$key]) && is_utf8($val) && $rows[$n][$key] == $row[$key] && !$functions[$key];
 						$text = preg_match('~text|lob~', $field["type"]);
 						echo "<td id='$id'";
-						if (($_GET["modify"] && $editable) || $value !== null) {
+						if ((isset($_GET["modify"]) && $_GET["modify"] && $editable) || $value !== null) {
 							$h_value = h($value !== null ? $value : $row[$key]);
 							echo ">" . ($text ? "<textarea name='$id' cols='30' rows='" . (substr_count($row[$key], "\n") + 1) . "'>$h_value</textarea>" : "<input name='$id' value='$h_value' size='$lengths[$key]'>");
 						} else {
@@ -545,7 +545,7 @@ if (!$columns && support("table")) {
 
 				$format = $adminer->dumpFormat();
 				foreach ((array) $_GET["columns"] as $column) {
-					if ($column["fun"]) {
+					if ($column["fun"] ?? null) {
 						unset($format['sql']);
 						break;
 					}
