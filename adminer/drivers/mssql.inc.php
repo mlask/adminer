@@ -24,8 +24,15 @@ if (isset($_GET["mssql"])) {
 
 			function connect($server, $username, $password) {
 				global $adminer;
-				$db = $adminer->database();
 				$connection_info = array("UID" => $username, "PWD" => $password, "CharacterSet" => "UTF-8");
+				$ssl = $adminer->connectSsl();
+				if (isset($ssl["Encrypt"])) {
+					$connection_info["Encrypt"] = $ssl["Encrypt"];
+				}
+				if (isset($ssl["TrustServerCertificate"])) {
+					$connection_info["TrustServerCertificate"] = $ssl["TrustServerCertificate"];
+				}
+				$db = $adminer->database();
 				if ($db != "") {
 					$connection_info["Database"] = $db;
 				}
@@ -40,7 +47,8 @@ if (isset($_GET["mssql"])) {
 			}
 
 			function quote($string) {
-				return "'" . str_replace("'", "''", $string) . "'";
+				$unicode = strlen($string) != strlen(utf8_decode($string));
+				return ($unicode ? "N" : "") . "'" . str_replace("'", "''", $string) . "'";
 			}
 
 			function select_db($database) {
@@ -163,7 +171,8 @@ if (isset($_GET["mssql"])) {
 			}
 
 			function quote($string) {
-				return "'" . str_replace("'", "''", $string) . "'";
+				$unicode = strlen($string) != strlen(utf8_decode($string));
+				return ($unicode ? "N" : "") . "'" . str_replace("'", "''", $string) . "'";
 			}
 
 			function select_db($database) {
@@ -301,6 +310,11 @@ if (isset($_GET["mssql"])) {
 		global $adminer;
 		$connection = new Min_DB;
 		$credentials = $adminer->credentials();
+
+		if ($credentials[0] == "") {
+			$credentials[0] = "localhost:1433";
+		}
+
 		if ($connection->connect($credentials[0], $credentials[1], $credentials[2])) {
 			return $connection;
 		}
@@ -539,7 +553,7 @@ WHERE OBJECT_NAME(i.object_id) = " . q($table)
 
 	function foreign_keys($table) {
 		$return = array();
-		foreach (get_rows("EXEC sp_fkeys @fktable_name = " . q($table)) as $row) {
+		foreach (get_rows("EXEC sp_fkeys @fktable_name = " . q($table) . ", @fktable_owner = " . q(get_schema())) as $row) {
 			$foreign_key = &$return[$row["FK_NAME"]];
 			$foreign_key["db"] = $row["PKTABLE_QUALIFIER"];
 			$foreign_key["table"] = $row["PKTABLE_NAME"];
@@ -628,6 +642,10 @@ WHERE sys1.xtype = 'TR' AND sys2.name = " . q($table)
 
 	function show_variables() {
 		return array();
+	}
+
+	function is_c_style_escapes() {
+		return true;
 	}
 
 	function show_status() {

@@ -32,8 +32,8 @@ if (!$error && $_POST) {
 	}
 
 	if (is_string($query)) { // get_file() returns error as number, fread() as false
-		if (function_exists('memory_get_usage')) {
-			@ini_set("memory_limit", max(ini_bytes("memory_limit"), 2 * strlen($query) + memory_get_usage() + 8e6)); // @ - may be disabled, 2 - substr and trim, 8e6 - other variables
+		if (function_exists('memory_get_usage') && ($memory_limit = ini_bytes("memory_limit")) != "-1") {
+			@ini_set("memory_limit", max($memory_limit, 2 * strlen($query) + memory_get_usage() + 8e6)); // @ - may be disabled, 2 - substr and trim, 8e6 - other variables
 		}
 
 		if ($query != "" && strlen($query) < 1e6) { // don't add big queries
@@ -81,13 +81,21 @@ if (!$error && $_POST) {
 					$offset = $pos + strlen($found);
 
 					if ($found && rtrim($found) != $delimiter) { // find matching quote or comment end
-						while (preg_match('(' . ($found == '/*' ? '\*/' : ($found == '[' ? ']' : (preg_match('~^-- |^#~', $found) ? "\n" : preg_quote($found) . "|\\\\."))) . '|$)s', $query, $match, PREG_OFFSET_CAPTURE, $offset)) { //! respect sql_mode NO_BACKSLASH_ESCAPES
+						$c_style_escapes = is_c_style_escapes() || ($jush == "pgsql" && ($pos > 0 && strtolower($query[$pos - 1]) == "e"));
+
+						$pattern = ($found == '/*' ? '\*/'
+							: ($found == '[' ? ']'
+							: (preg_match('~^-- |^#~', $found) ? "\n"
+							: preg_quote($found) . ($c_style_escapes ? "|\\\\." : "")
+						)));
+
+						while (preg_match("($pattern|\$)s", $query, $match, PREG_OFFSET_CAPTURE, $offset)) {
 							$s = $match[0][0];
 							if (!$s && $fp && !feof($fp)) {
 								$query .= fread($fp, 1e5);
 							} else {
 								$offset = $match[0][1] + strlen($s);
-								if ($s[0] != "\\") {
+								if (!$s || $s[0] != "\\") {
 									break;
 								}
 							}
@@ -133,7 +141,7 @@ if (!$error && $_POST) {
 									$time = " <span class='time'>(" . format_time($start) . ")</span>"
 										. (strlen($q) < 1000 ? " <a href='" . h(ME) . "sql=" . urlencode(trim($q)) . "'>" . lang('Edit') . "</a>" : "") // 1000 - maximum length of encoded URL in IE is 2083 characters
 									;
-									$affected = $connection->affected_rows; // getting warnigns overwrites this
+									$affected = $connection->affected_rows; // getting warnings overwrites this
 									$warnings = ($_POST["only_errors"] ? "" : $driver->warnings());
 									$warnings_id = "warnings-$commands";
 									if ($warnings) {
@@ -174,7 +182,7 @@ if (!$error && $_POST) {
 									}
 									echo ($warnings ? "<div id='$warnings_id' class='hidden'>\n$warnings</div>\n" : "");
 									if ($explain) {
-										echo "<div id='$explain_id' class='hidden'>\n";
+										echo "<div id='$explain_id' class='hidden explain'>\n";
 										select($explain, $connection2, $orgtables);
 										echo "</div>\n";
 									}

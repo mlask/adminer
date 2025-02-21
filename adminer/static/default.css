@@ -30,6 +30,7 @@ tbody tr:hover td, tbody tr:hover th { background: #eee; }
 pre { margin: 1em 0 0; }
 pre, textarea { font: 12px/1.25 "SF Mono", Monaco, Courier, monospace; }
 tt, code, kbd, samp { font-family: "SF Mono", Monaco, Courier, monospace; }
+input, textarea { box-sizing: border-box; }
 input, select { vertical-align: middle; }
 input.default { box-shadow: 1px 1px 1px #777; }
 input.required { box-shadow: 1px 1px 1px red; }
@@ -62,6 +63,7 @@ code.jush-sql { background: transparent; font-size: 12px; padding: 5px 10px; }
 .view { font-style: italic; }
 .active { font-weight: bold; }
 .sqlarea { width: 98%; }
+.explain { white-space: pre; }
 .icon { width: 18px; height: 18px; background-color: navy; }
 .icon:hover { background-color: red; }
 .size { width: 6ex; }
@@ -77,13 +79,13 @@ code.jush-sql { background: transparent; font-size: 12px; padding: 5px 10px; }
 #menu p, #logins, #tables { padding: .8em 1em; margin: 0; border-bottom: 1px solid #ccc; }
 #logins li, #tables li { list-style: none; }
 #dbs { overflow: hidden; }
-#logins, #tables { white-space: nowrap; overflow: auto; }
+#logins, #tables { white-space: nowrap; overflow: hidden; }
 #logins a, #tables a, #tables span { background: #fff; }
 #content { margin: 2em 0 0 21em; padding: 10px 0 20px 0; min-width: calc(100vw - 21em); }
 #lang { position: absolute; top: 0; left: 0; line-height: 1.8em; padding: .3em 1em; }
 #breadcrumb { white-space: nowrap; position: absolute; top: 0; left: 21em; background: #eee; height: 2em; line-height: 1.8em; padding: 0 1em; margin: 0 0 0 -18px; font-weight: 450; }
 #h1 { color: #777; text-decoration: none; font-style: italic; }
-#version { font-size: 67%; color: red; }
+#version { color: red; }
 #schema { margin-left: 60px; position: relative; -moz-user-select: none; -webkit-user-select: none; }
 #schema .table { border: 1px solid silver; padding: 0 2px; cursor: move; position: absolute; }
 #schema .references { position: absolute; }
@@ -100,8 +102,9 @@ td[id^="Comment-"] { color: rgba(0, 0, 0, 0.8); }
 .rtl .pages { left: auto; right: 21em; }
 .rtl input.wayoff { left: auto; right: -1000px; }
 .rtl #lang, .rtl #menu { left: auto; right: 0; }
+.rtl pre, .rtl code { direction: ltr; }
 
-@media all and (max-device-width: 880px) {
+@media all and (max-width: 880px) {
 	.pages { left: auto; }
 	#menu { position: static; width: auto; }
 	#content { margin-left: 10px; }

@@ -1,4 +1,6 @@
 <?php
+// This file is used both in Adminer and Adminer Editor.
+
 /** Get database connection
 * @return Min_DB
 */
@@ -107,7 +109,7 @@ function min_version($version, $maria_db = "", $connection2 = null) {
 		$server_info = $match[1];
 		$version = $maria_db;
 	}
-	return (version_compare($server_info, $version) >= 0);
+	return $version && version_compare($server_info, $version) >= 0;
 }
 
 /** Get connection charset
@@ -235,22 +237,6 @@ function html_select($name, $options, $value = "", $onchange = true, $labelled_b
 	return $return;
 }
 
-/** Generate HTML <select> or <input> if $options are empty
-* @param string
-* @param array
-* @param string
-* @param string
-* @param string
-* @return string
-*/
-function select_input($attrs, $options, $value = "", $onchange = "", $placeholder = "") {
-	$tag = ($options ? "select" : "input");
-	return "<$tag$attrs" . ($options
-		? "><option value=''>$placeholder" . optionlist($options, $value, true) . "</select>"
-		: " size='10' value='" . h($value) . "' placeholder='$placeholder'>"
-	) . ($onchange ? script("qsl('$tag').onchange = $onchange;", "") : ""); //! use oninput for input
-}
-
 /** Get onclick confirmation
 * @param string
 * @param string
@@ -303,25 +289,6 @@ function js_escape($string) {
 	return addcslashes($string, "\r\n'\\/"); // slash for <script>
 }
 
-/** Print one row in JSON object
-* @param string or "" to close the object
-* @param string
-* @return null
-*/
-function json_row($key, $val = null) {
-	static $first = true;
-	if ($first) {
-		echo "{";
-	}
-	if ($key != "") {
-		echo ($first ? "" : ",") . "\n\t\"" . addcslashes($key, "\r\n\t\"\\/") . '": ' . ($val !== null ? '"' . addcslashes($val, "\r\n\"\\/") . '"' : 'null');
-		$first = false;
-	} else {
-		echo "\n}\n";
-		$first = true;
-	}
-}
-
 /** Get INI boolean value
 * @param string
 * @return bool
@@ -331,7 +298,7 @@ function ini_bool($ini) {
 	return (preg_match('~^(on|true|yes)$~i', $val) || (int) $val); // boolean values set by php_value are strings
 }
 
-/** Check if SID is neccessary
+/** Check if SID is necessary
 * @return bool
 */
 function sid() {
@@ -485,10 +452,11 @@ function where($where, $fields = array()) {
 		$key = bracket_escape($key, 1); // 1 - back
 		$column = escape_key($key);
 		$return[] = $column
-			. ($jush == "sql" && is_numeric($val) && preg_match('~\.~', $val) ? " LIKE " . q($val) // LIKE because of floats but slow with ints
+			. ($jush == "sql" && $fields[$key]["type"] == "json" ? " = CAST(" . q($val) . " AS JSON)"
+				: ($jush == "sql" && is_numeric($val) && preg_match('~\.~', $val) ? " LIKE " . q($val) // LIKE because of floats but slow with ints
 				: ($jush == "mssql" ? " LIKE " . q(preg_replace('~[_%[]~', '[\0]', $val)) // LIKE because of text
 				: " = " . unconvert_field($fields[$key], q($val))
-			))
+			)))
 		; //! enum and set
 		if ($jush == "sql" && preg_match('~char|text~', $fields[$key]["type"] ?? null) && preg_match("~[^ -@]~", $val)) { // not just [a-z] to catch non-ASCII characters
 			$return[] = "$column = " . q($val) . " COLLATE " . charset($connection) . "_bin";
@@ -950,13 +918,14 @@ function input($field, $value, $function) {
 		$function = null;
 	}
 	$functions = (isset($_GET["select"]) || $reset ? array("orig" => lang('original')) : array()) + $adminer->editFunctions($field);
-	$attrs = " name='fields[$name]'";
+	$disabled = stripos($field["default"], "GENERATED ALWAYS AS ") === 0 ? " disabled=''" : "";
+	$attrs = " name='fields[$name]'$disabled";
 	if ($field["type"] == "enum") {
 		echo h($functions[""]) . "<td>" . $adminer->editInput($_GET["edit"], $field, $attrs, $value);
 	} else {
 		$has_function = (in_array($function, $functions) || isset($functions[$function]));
 		echo (count($functions) > 1
-			? "<select name='function[$name]'>" . optionlist($functions, $function === null || $has_function ? $function : "") . "</select>"
+			? "<select name='function[$name]'$disabled>" . optionlist($functions, $function === null || $has_function ? $function : "") . "</select>"
 				. on_help("getTarget(event).value.replace(/^SQL\$/, '')", 1)
 				. script("qsl('select').onchange = functionChange;", "")
 			: h(reset($functions))
@@ -965,8 +934,8 @@ function input($field, $value, $function) {
 		if ($input != "") {
 			echo $input;
 		} elseif (preg_match('~bool~', $field["type"])) {
-			echo "<input type='hidden'$attrs value='0'>" .
-				"<input type='checkbox'" . (preg_match('~^(1|t|true|y|yes|on)$~i', $value) ? " checked='checked'" : "") . "$attrs value='1'>";
+			echo "<input type='hidden'$attrs value='0'>"
+				. "<input type='checkbox'" . (preg_match('~^(1|t|true|y|yes|on)$~i', $value) ? " checked='checked'" : "") . "$attrs value='1'>";
 		} elseif ($field["type"] == "set") { //! 64 bits
 			preg_match_all("~'((?:[^']|'')*)'~", $field["length"], $matches);
 			foreach ($matches[1] as $i => $val) {
@@ -1021,6 +990,11 @@ function input($field, $value, $function) {
 */
 function process_input($field) {
 	global $adminer, $driver;
+
+	if (stripos($field["default"], "GENERATED ALWAYS AS ") === 0) {
+		return null;
+	}
+
 	$idf = bracket_escape($field["field"]);
 	$function = $_POST["function"][$idf];
 	$value = $_POST["fields"][$idf];
@@ -1429,6 +1403,7 @@ function edit_form($table, $fields, $row, $update) {
 	$adminer->editRowPrint($table, $fields, $row, $update);
 	if ($row === false) {
 		echo "<p class='error'>" . lang('No rows.') . "\n";
+		return;
 	}
 	?>
 <form action="" method="post" enctype="multipart/form-data" id="form">
@@ -1437,7 +1412,6 @@ function edit_form($table, $fields, $row, $update) {
 		echo "<p class='error'>" . lang('You have no privileges to update this table.') . "\n";
 	} else {
 		echo "<table cellspacing='0' class='layout'>" . script("qsl('table').onkeydown = editingKeydown;");
-
 		foreach ($fields as $name => $field) {
 			echo "<tr><th>" . $adminer->fieldName($field);
 			$default = $_GET["set"][bracket_escape($name)] ?? null;
@@ -1473,6 +1447,10 @@ function edit_form($table, $fields, $row, $update) {
 			if (preg_match("~time~", $field["type"]) && preg_match('~^CURRENT_TIMESTAMP~i', $value)) {
 				$value = "";
 				$function = "now";
+			}
+			if ($field["type"] == "uuid" && $value == "uuid()") {
+				$value = "";
+				$function = "uuid";
 			}
 			input($field, $value, $function);
 			echo "\n";

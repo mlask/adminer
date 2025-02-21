@@ -1,12 +1,7 @@
 #!/usr/bin/env php
 <?php
-function adminer_errors($errno, $errstr) {
-	return !!preg_match('~^(Trying to access array offset on value of type null|Undefined array key)~', $errstr);
-}
-
-error_reporting(6135); // errors and warnings
-set_error_handler('adminer_errors', E_WARNING);
 include dirname(__FILE__) . "/adminer/include/version.inc.php";
+include dirname(__FILE__) . "/adminer/include/errors.inc.php";
 include dirname(__FILE__) . "/externals/JsShrink/jsShrink.php";
 
 function add_apo_slashes($s) {

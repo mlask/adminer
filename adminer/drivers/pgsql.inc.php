@@ -20,6 +20,10 @@ if (isset($_GET["pgsql"])) {
 				$db = $adminer->database();
 				set_error_handler(array($this, '_error'));
 				$this->_string = "host='" . str_replace(":", "' port='", addcslashes($server, "'\\")) . "' user='" . addcslashes($username, "'\\") . "' password='" . addcslashes($password, "'\\") . "'";
+				$ssl = $adminer->connectSsl();
+				if (isset($ssl["mode"])) {
+					$this->_string .= " sslmode='" . $ssl["mode"] . "'";
+				}
 				$this->_link = @pg_connect("$this->_string dbname='" . ($db != "" ? addcslashes($db, "'\\") : "postgres") . "'", PGSQL_CONNECT_FORCE_NEW);
 				if (!$this->_link && $db != "") {
 					// try to connect directly with database for performance
@@ -36,7 +40,7 @@ if (isset($_GET["pgsql"])) {
 			}
 
 			function quote($string) {
-				return "'" . pg_escape_string($this->_link, $string) . "'";
+				return pg_escape_literal($this->_link, $string);
 			}
 
 			function value($val, $field) {
@@ -149,8 +153,13 @@ if (isset($_GET["pgsql"])) {
 			function connect($server, $username, $password) {
 				global $adminer;
 				$db = $adminer->database();
-				$this->dsn("pgsql:host='" . str_replace(":", "' port='", addcslashes($server, "'\\")) . "' client_encoding=utf8 dbname='" . ($db != "" ? addcslashes($db, "'\\") : "postgres") . "'", $username, $password); //! client_encoding is supported since 9.1 but we can't yet use min_version here
-				//! connect without DB in case of an error
+				//! client_encoding is supported since 9.1, but we can't yet use min_version here
+				$dsn = "pgsql:host='" . str_replace(":", "' port='", addcslashes($server, "'\\")) . "' client_encoding=utf8 dbname='" . ($db != "" ? addcslashes($db, "'\\") : "postgres") . "'";
+				$ssl = $adminer->connectSsl();
+				if (isset($ssl["mode"])) {
+					$dsn .= " sslmode='" . $ssl["mode"] . "'";
+				}
+				$this->dsn($dsn, $username, $password);
 				return true;
 			}
 
@@ -213,12 +222,12 @@ if (isset($_GET["pgsql"])) {
 		}
 
 		function convertSearch($idf, $val, $field) {
-			return (preg_match('~char|text'
-					. (!preg_match('~LIKE~', $val["op"]) ? '|date|time(stamp)?|boolean|uuid|' . number_type() : '')
-					. '~', $field["type"])
-				? $idf
-				: "CAST($idf AS text)"
-			);
+			$textTypes = "char|text";
+			if (strpos($val["op"], "LIKE") === false) {
+				$textTypes .= "|date|time(stamp)?|boolean|uuid|inet|cidr|macaddr|" . number_type();
+			}
+
+			return (preg_match("~$textTypes~", $field["type"]) ? $idf : "CAST($idf AS text)");
 		}
 
 		function quoteBinary($s) {
@@ -274,7 +283,9 @@ if (isset($_GET["pgsql"])) {
 	}
 
 	function get_databases() {
-		return get_vals("SELECT datname FROM pg_database WHERE has_database_privilege(datname, 'CONNECT') ORDER BY datname");
+		return get_vals("SELECT d.datname FROM pg_database d JOIN pg_roles r ON d.datdba = r.oid
+WHERE d.datallowconn = TRUE AND has_database_privilege(d.datname, 'CONNECT') AND pg_has_role(r.rolname, 'USAGE')
+ORDER BY d.datname");
 	}
 
 	function limit($query, $where, $limit, $offset = 0, $separator = " ") {
@@ -322,7 +333,7 @@ ORDER BY 1";
 
 	function table_status($name = "") {
 		$return = array();
-		foreach (get_rows("SELECT c.relname AS \"Name\", CASE c.relkind WHEN 'r' THEN 'table' WHEN 'm' THEN 'materialized view' ELSE 'view' END AS \"Engine\", pg_relation_size(c.oid) AS \"Data_length\", pg_total_relation_size(c.oid) - pg_relation_size(c.oid) AS \"Index_length\", obj_description(c.oid, 'pg_class') AS \"Comment\", " . (min_version(12) ? "''" : "CASE WHEN c.relhasoids THEN 'oid' ELSE '' END") . " AS \"Oid\", c.reltuples as \"Rows\", n.nspname
+		foreach (get_rows("SELECT c.relname AS \"Name\", CASE c.relkind WHEN 'r' THEN 'table' WHEN 'm' THEN 'materialized view' ELSE 'view' END AS \"Engine\", pg_table_size(c.oid) AS \"Data_length\", pg_indexes_size(c.oid) AS \"Index_length\", obj_description(c.oid, 'pg_class') AS \"Comment\", " . (min_version(12) ? "''" : "CASE WHEN c.relhasoids THEN 'oid' ELSE '' END") . " AS \"Oid\", c.reltuples as \"Rows\", n.nspname
 FROM pg_class c
 JOIN pg_namespace n ON(n.nspname = current_schema() AND n.oid = c.relnamespace)
 WHERE relkind IN ('r', 'm', 'v', 'f', 'p')
@@ -347,7 +358,6 @@ WHERE relkind IN ('r', 'm', 'v', 'f', 'p')
 			'timestamp without time zone' => 'timestamp',
 			'timestamp with time zone' => 'timestamptz',
 		);
-
 		foreach (get_rows("SELECT a.attname AS field, format_type(a.atttypid, a.atttypmod) AS full_type, pg_get_expr(d.adbin, d.adrelid) AS default, a.attnotnull::int, col_description(c.oid, a.attnum) AS comment" . (min_version(10) ? ", a.attidentity" : "") . "
 FROM pg_class c
 JOIN pg_namespace n ON c.relnamespace = n.oid
@@ -483,7 +493,8 @@ ORDER BY connamespace, conname") as $row) {
 	}
 
 	function rename_database($name, $collation) {
-		//! current database cannot be renamed
+		global $connection;
+		$connection->close();
 		return queries("ALTER DATABASE " . idf_escape(DB) . " RENAME TO " . idf_escape($name));
 	}
 
@@ -497,6 +508,7 @@ ORDER BY connamespace, conname") as $row) {
 		if ($table != "" && $table != $name) {
 			$queries[] = "ALTER TABLE " . table($table) . " RENAME TO " . table($name);
 		}
+		$sequence = "";
 		foreach ($fields as $field) {
 			$column = idf_escape($field[0]);
 			$val = $field[1];
@@ -518,10 +530,15 @@ ORDER BY connamespace, conname") as $row) {
 						$queries[] = "ALTER TABLE " . table($name) . " RENAME $column TO $val[0]";
 					}
 					$alter[] = "ALTER $column TYPE$val[1]";
-					if (!$val[6]) {
-						$alter[] = "ALTER $column " . ($val[3] ? "SET$val[3]" : "DROP DEFAULT");
-						$alter[] = "ALTER $column " . ($val[2] == " NULL" ? "DROP NOT" : "SET") . $val[2];
+					$sequence_name = $table . "_" . idf_unescape($val[0]) . "_seq";
+					$alter[] = "ALTER $column " . ($val[3] ? "SET$val[3]"
+						: (isset($val[6]) ? "SET DEFAULT nextval(" . q($sequence_name) . ")"
+						: "DROP DEFAULT"
+					));
+					if (isset($val[6])) {
+						$sequence = "CREATE SEQUENCE IF NOT EXISTS " . idf_escape($sequence_name) . " OWNED BY " . idf_escape($table) . ".$val[0]";
 					}
+					$alter[] = "ALTER $column " . ($val[2] == " NULL" ? "DROP NOT" : "SET") . $val[2];
 				}
 				if ($field[0] != "" || $val5 != "") {
 					$queries[] = "COMMENT ON COLUMN " . table($name) . ".$val[0] IS " . ($val5 != "" ? substr($val5, 9) : "''");
@@ -533,6 +550,9 @@ ORDER BY connamespace, conname") as $row) {
 			array_unshift($queries, "CREATE TABLE " . table($name) . " (\n" . implode(",\n", $alter) . "\n)");
 		} elseif ($alter) {
 			array_unshift($queries, "ALTER TABLE " . table($table) . "\n" . implode(",\n", $alter));
+		}
+		if ($sequence) {
+			array_unshift($queries, $sequence);
 		}
 		if ($comment !== null) {
 			$queries[] = "COMMENT ON TABLE " . table($name) . " IS " . q($comment);
@@ -751,8 +771,6 @@ AND typelem = 0"
 	}
 
 	function create_sql($table, $auto_increment, $style) {
-		global $connection;
-		$return = '';
 		$return_parts = array();
 		$sequences = array();
 
@@ -773,7 +791,7 @@ AND typelem = 0"
 		$return = "CREATE TABLE " . idf_escape($status['nspname']) . "." . idf_escape($status['Name']) . " (\n    ";
 
 		// fields' definitions
-		foreach ($fields as $field_name => $field) {
+		foreach ($fields as $field) {
 			$part = idf_escape($field['field']) . ' ' . $field['full_type']
 				. default_value($field)
 				. ($field['attnotnull'] ? " NOT NULL" : "");
@@ -783,11 +801,14 @@ AND typelem = 0"
 			if (preg_match('~nextval\(\'([^\']+)\'\)~', $field['default'], $matches)) {
 				$sequence_name = $matches[1];
 				$sq = reset(get_rows(min_version(10)
-					? "SELECT *, cache_size AS cache_value FROM pg_sequences WHERE schemaname = current_schema() AND sequencename = " . q($sequence_name)
+					? "SELECT *, cache_size AS cache_value FROM pg_sequences WHERE schemaname = current_schema() AND sequencename = " . q(idf_unescape($sequence_name))
 					: "SELECT * FROM $sequence_name"
 				));
 				$sequences[] = ($style == "DROP+CREATE" ? "DROP SEQUENCE IF EXISTS $sequence_name;\n" : "")
-					. "CREATE SEQUENCE $sequence_name INCREMENT $sq[increment_by] MINVALUE $sq[min_value] MAXVALUE $sq[max_value]" . ($auto_increment && $sq['last_value'] ? " START $sq[last_value]" : "") . " CACHE $sq[cache_value];";
+					. "CREATE SEQUENCE $sequence_name INCREMENT $sq[increment_by] MINVALUE $sq[min_value] MAXVALUE $sq[max_value]"
+					. ($auto_increment && $sq['last_value'] ? " START " . ($sq["last_value"] + 1) : "")
+					. " CACHE $sq[cache_value];"
+				;
 			}
 		}
 
@@ -821,7 +842,7 @@ AND typelem = 0"
 			}
 		}
 
-		// coments for table & fields
+		// comments for table & fields
 		if ($status['Comment']) {
 			$return .= "\n\nCOMMENT ON TABLE " . idf_escape($status['nspname']) . "." . idf_escape($status['Name']) . " IS " . q($status['Comment']) . ";";
 		}
@@ -856,6 +877,15 @@ AND typelem = 0"
 
 	function show_variables() {
 		return get_key_vals("SHOW ALL");
+	}
+
+	function is_c_style_escapes() {
+		static $c_style = null;
+		if ($c_style === null) {
+			$vals = get_vals("SHOW standard_conforming_strings");
+			$c_style = $vals[0] == "off";
+		}
+		return $c_style;
 	}
 
 	function process_list() {
@@ -897,7 +927,7 @@ AND typelem = 0"
 			lang('Date and time') => array("date" => 13, "time" => 17, "timestamp" => 20, "timestamptz" => 21, "interval" => 0),
 			lang('Strings') => array("character" => 0, "character varying" => 0, "text" => 0, "tsquery" => 0, "tsvector" => 0, "uuid" => 0, "xml" => 0),
 			lang('Binary') => array("bit" => 0, "bit varying" => 0, "bytea" => 0),
-			lang('Network') => array("cidr" => 43, "inet" => 43, "macaddr" => 17, "txid_snapshot" => 0),
+			lang('Network') => array("cidr" => 43, "inet" => 43, "macaddr" => 17, "macaddr8" => 23, "txid_snapshot" => 0),
 			lang('Geometry') => array("box" => 0, "circle" => 0, "line" => 0, "lseg" => 0, "path" => 0, "point" => 0, "polygon" => 0),
 		) as $key => $val) { //! can be retrieved from pg_type
 			$types += $val;

@@ -11,7 +11,7 @@ class AdminerLoginOtp {
 	var $secret;
 	
 	/** 
-	* @param string decoded secret, e.g. base32_decode("SECRET")
+	* @param string decoded secret, e.g. base64_decode("SECRET")
 	*/
 	function __construct($secret) {
 		$this->secret = $secret;
@@ -24,7 +24,7 @@ class AdminerLoginOtp {
 		if ($name == 'password') {
 			return $heading . $value
 				. "<tr><th><acronym title='One Time Password' lang='en'>OTP</acronym>"
-				. "<td><input type='number' name='auth[otp]' value='" . h($_SESSION["otp"]) . "' size='6' autocomplete='off'>\n"
+				. "<td><input type='number' name='auth[otp]' value='" . h($_SESSION["otp"]) . "' size='6' autocomplete='one-time-code' inputmode='numeric' maxlength='6' pattern='\d{6}'>\n"
 			;
 		}
 	}

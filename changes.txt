@@ -1,4 +1,70 @@
-Adminer 4.8.2-dev:
+Adminer 4.16.0 (released 2025-02-20):
+MySQL: Fix saving bit(64) values (bug #839)
+PostgreSQL: Preserve whitespace in EXPLAIN (bug #827)
+PostgreSQL: Support SSL
+PostgreSQL: Support altering auto_increment (bug #761)
+SQLite: Fix altering forign keys (bug #841)
+SQLite: Fix expressions in default values (bug #860)
+MS SQL: Foreign keys in non-default schema (bug #833)
+Oracle: Include tables granted by other user
+MongoDB: Execute commands against the selected DB
+
+Adminer 4.15.0:
+Escape unknown field in select
+HTTP drivers: Don't allow path in server name
+HTTP drivers: Hide connection error message
+SimpleDB: Disable XML entity loader
+
+Adminer 4.14.0:
+Use autofocus HTML attribute
+PostgreSQL: Fix initial value of exported autoincrement
+PostgreSQL: Fix renaming a database
+
+Adminer 4.12.0:
+Fix SQL query code direction if RTL language is used
+MariaDB: Add support for UUID data type
+MS SQL, MongoDB: Connect to localhost with default port if server is not specified
+MongoDB: Fix parsing WHERE condition from SQL query
+
+Adminer 4.11.0:
+MySQL: Fix highlighting current table in menu on macOS
+MariaDB: Fix several links to documentation pages
+MS SQL: Prefix Unicode strings with 'N' so they are treated correctly
+
+Adminer 4.10.0:
+Print username next to the logout button
+Do not display empty action links in main menu
+
+Adminer 4.9.4:
+Unify displaying of 'New item' action based on privileges
+Firefox: Fix opening a database to the new browser's tab with Ctrl+click
+Editor: Fix array conversion to string (issue adminerneo#3).
+Editor: Fix building links with array parameters
+
+Adminer 4.9.3:
+MySQL, PostgreSQL: Fix queries splitting and string constants
+MySQL: Fix where clause for JSON column
+MySQL: Do not include unchanged PARTITION BY definition into ALTER TABLE query
+MariaDB: Support current_timestamp()
+PostgreSQL: Fix editing record that contains a field with GENERATED ALWAYS default value
+
+Adminer 4.9.2:
+PostgreSQL: Fix search fields configuration (regression from 4.9.0)
+PostgreSQL: Fix exporting CREATE TABLE query with GENERATED default values
+PostgreSQL: Fix exporting CREATE TABLE with sequence default value
+PostgreSQL: Fix search condition for network address types, add macaddr8 type
+
+Adminer 4.9.1:
+Support PHP 8.3
+PostgreSQL: Show only accessible databases
+
+Adminer 4.9.0:
+Validate connection to server in HTTP based drivers
+Elasticsearch 5: Make unusable driver usable again, move it to plugins
+Add new Elasticsearch 7 driver
+MySQL: Skip dump of generated columns
+
+Adminer 4.8.2:
 Support multi-line table comments
 MySQL: Use ST_SRID() instead of SRID() for MySQL 8 (PR #418)
 PostgreSQL: Don't reset table comments (regression from 4.2.0)
@@ -99,7 +165,7 @@ SQLite: Handle error in altering table (bug #697)
 SQLite: Allow setting auto increment for empty tables
 SQLite: Preserve auto increment when recreating table
 MS SQL: Support foreign keys to other DB
-MongoDB: Allow setting authSource from environment variable 
+MongoDB: Allow setting authSource from environment variable
 
 Adminer 4.7.2 (released 2019-07-18):
 Do not attempt logging in without password (bug #676)
@@ -427,7 +493,7 @@ Allow exporting views dependent on each other (bug #214)
 Fix resetting search (bug #318)
 Don't use LIMIT 1 if updating unique row (bug #320)
 Restrict editing rows without unique identifier to search results
-Display navigation bellow main content on mobile browsers
+Display navigation below main content on mobile browsers
 Get number of rows on export page asynchronously
 Respect 'whole result' even if some rows are checked (bug #339 since Adminer 3.7.0)
 MySQL: Optimize create table page and Editor navigation

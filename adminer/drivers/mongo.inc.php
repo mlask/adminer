@@ -217,7 +217,7 @@ if (isset($_GET["mongo"])) {
 			function connect($uri, $options) {
 				$class = 'MongoDB\Driver\Manager';
 				$this->_link = new $class($uri, $options);
-				$this->executeCommand('admin', array('ping' => 1));
+				$this->executeCommand($options["db"], array('ping' => 1));
 			}
 			
 			function executeCommand($db, $command) {
@@ -399,7 +399,7 @@ if (isset($_GET["mongo"])) {
 		function get_databases($flush) {
 			global $connection;
 			$return = array();
-			foreach ($connection->executeCommand('admin', array('listDatabases' => 1)) as $dbs) {
+			foreach ($connection->executeCommand($connection->_db_name, array('listDatabases' => 1)) as $dbs) {
 				foreach ($dbs->databases as $db) {
 					$return[] = $db->name;
 				}
@@ -480,7 +480,11 @@ if (isset($_GET["mongo"])) {
 		}
 
 		function sql_query_where_parser($queryWhere) {
-			$queryWhere = preg_replace('~^\sWHERE \(?\(?(.+?)\)?\)?$~', '\1', $queryWhere);
+			$queryWhere = preg_replace('~^\s*WHERE\s*~', "", $queryWhere);
+			while ($queryWhere[0] == "(") {
+				$queryWhere = preg_replace('~^\((.*)\)$~', "$1", $queryWhere);
+			}
+
 			$wheres = explode(' AND ', $queryWhere);
 			$wheresOr = explode(') OR (', $queryWhere);
 			$where = array();
@@ -625,6 +629,11 @@ if (isset($_GET["mongo"])) {
 		global $adminer;
 		$connection = new Min_DB;
 		list($server, $username, $password) = $adminer->credentials();
+
+		if ($server == "") {
+			$server = "localhost:27017";
+		}
+
 		$options = array();
 		if ($username . $password != "") {
 			$options["username"] = $username;

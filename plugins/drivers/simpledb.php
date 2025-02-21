@@ -121,7 +121,7 @@ if (isset($_GET["simpledb"])) {
 		public $primary = "itemName()";
 
 		function _chunkRequest($ids, $action, $params, $expand = array()) {
-			global $connection;
+			$connection = connection();
 			foreach (array_chunk($ids, 25) as $chunk) {
 				$params2 = $params;
 				foreach ($chunk as $i => $id) {
@@ -151,7 +151,7 @@ if (isset($_GET["simpledb"])) {
 		}
 
 		function select($table, $select, $where, $group, $order = array(), $limit = 1, $page = 0, $print = false) {
-			global $connection;
+			$connection = connection();
 			$connection->next = $_GET["next"];
 			$return = parent::select($table, $select, $where, $group, $order, $limit, $page, $print);
 			$connection->next = 0;
@@ -247,8 +247,11 @@ if (isset($_GET["simpledb"])) {
 
 
 	function connect() {
-		global $adminer;
-		list(, , $password) = $adminer->credentials();
+		$adminer = adminer();
+		list($host, , $password) = $adminer->credentials();
+		if (!preg_match('~^(https?://)?[-a-z\d.]+(:\d+)?$~', $host)) {
+			return lang('Invalid server.');
+		}
 		if ($password != "") {
 			return lang('Database does not support password.');
 		}
@@ -260,7 +263,7 @@ if (isset($_GET["simpledb"])) {
 	}
 
 	function logged_user() {
-		global $adminer;
+		$adminer = adminer();
 		$credentials = $adminer->credentials();
 		return $credentials[1];
 	}
@@ -277,7 +280,7 @@ if (isset($_GET["simpledb"])) {
 	}
 
 	function tables_list() {
-		global $connection;
+		$connection = connection();
 		$return = array();
 		foreach (sdb_request_all('ListDomains', 'DomainName') as $table) {
 			$return[(string) $table] = 'table';
@@ -317,7 +320,7 @@ if (isset($_GET["simpledb"])) {
 	}
 
 	function error() {
-		global $connection;
+		$connection = connection();
 		return h($connection->error);
 	}
 
@@ -407,7 +410,8 @@ if (isset($_GET["simpledb"])) {
 	}
 
 	function sdb_request($action, $params = array()) {
-		global $adminer, $connection;
+		$adminer = adminer();
+		$connection = connection();
 		list($host, $params['AWSAccessKeyId'], $secret) = $adminer->credentials();
 		$params['Action'] = $action;
 		$params['Timestamp'] = gmdate('Y-m-d\TH:i:s+00:00');
@@ -421,17 +425,19 @@ if (isset($_GET["simpledb"])) {
 		}
 		$query = str_replace('%7E', '~', substr($query, 1));
 		$query .= "&Signature=" . urlencode(base64_encode(hmac('sha1', "POST\n" . preg_replace('~^https?://~', '', $host) . "\n/\n$query", $secret, true)));
-		@ini_set('track_errors', 1); // @ - may be disabled
 		$file = @file_get_contents((preg_match('~^https?://~', $host) ? $host : "http://$host"), false, stream_context_create(array('http' => array(
 			'method' => 'POST', // may not fit in URL with GET
 			'content' => $query,
 			'ignore_errors' => 1, // available since PHP 5.2.10
+			'follow_location' => 0,
+			'max_redirects' => 0,
 		))));
 		if (!$file) {
-			$connection->error = $php_errormsg;
+			$this->error = lang('Invalid credentials.');
 			return false;
 		}
 		libxml_use_internal_errors(true);
+		libxml_disable_entity_loader();
 		$xml = simplexml_load_string($file);
 		if (!$xml) {
 			$error = libxml_get_last_error();

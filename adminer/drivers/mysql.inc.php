@@ -27,7 +27,7 @@ if (!defined("DRIVER")) {
 					$database,
 					(is_numeric($port) ? $port : ini_get("mysqli.default_port")),
 					(!is_numeric($port) ? $port : $socket),
-					($ssl ? 64 : 0) // 64 - MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT (not available before PHP 5.6.16)
+					($ssl ? (empty($ssl['cert']) ? 2048 : 64) : 0) // 2048 - MYSQLI_CLIENT_SSL, 64 - MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT (not available before PHP 5.6.16)
 				);
 				$this->options(MYSQLI_OPT_LOCAL_INFILE, false);
 				return $return;
@@ -50,7 +50,7 @@ if (!defined("DRIVER")) {
 				$row = $result->fetch_array();
 				return $row[$field];
 			}
-			
+
 			function quote($string) {
 				return "'" . $this->escape_string($string) . "'";
 			}
@@ -246,6 +246,9 @@ if (!defined("DRIVER")) {
 					if (!empty($ssl['ca'])) {
 						$options[PDO::MYSQL_ATTR_SSL_CA] = $ssl['ca'];
 					}
+					if (!empty($ssl['verify'])) {
+						$options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = $ssl['verify'];
+					}
 				}
 				$this->dsn(
 					"mysql:charset=utf8;host=" . str_replace(":", ";unix_socket=", preg_replace('~:(\d)~', ';port=\1', $server)),
@@ -305,7 +308,7 @@ if (!defined("DRIVER")) {
 			}
 			return queries($prefix . implode(",\n", $values) . $suffix);
 		}
-		
+
 		function slowQuery($query, $timeout) {
 			if (min_version('5.7.8', '10.1.2')) {
 				if (preg_match('~MariaDB~', $this->_conn->server_info)) {
@@ -322,7 +325,7 @@ if (!defined("DRIVER")) {
 				: $idf
 			);
 		}
-		
+
 		function warnings() {
 			$result = $this->_conn->query("SHOW WARNINGS");
 			if ($result && $result->num_rows) {
@@ -366,7 +369,7 @@ if (!defined("DRIVER")) {
 	* @return mixed Min_DB or string for error
 	*/
 	function connect() {
-		global $adminer, $types, $structured_types;
+		global $adminer, $types, $structured_types, $edit_functions;
 		$connection = new Min_DB;
 		$credentials = $adminer->credentials();
 		if ($connection->connect($credentials[0], $credentials[1], $credentials[2])) {
@@ -375,6 +378,11 @@ if (!defined("DRIVER")) {
 			if (min_version('5.7.8', 10.2, $connection)) {
 				$structured_types[lang('Strings')][] = "json";
 				$types["json"] = 4294967295;
+			}
+			if (min_version('', 10.7, $connection)) {
+				$structured_types[lang('Strings')][] = "uuid";
+				$types["uuid"] = 128;
+				$edit_functions[0]['uuid'] = 'uuid';
 			}
 			return $connection;
 		}
@@ -508,6 +516,8 @@ if (!defined("DRIVER")) {
 				$row["Comment"] = "";
 			}
 			if ($name != "") {
+				// MariaDB: Table name is returned as lowercase on macOS, so we fix it here.
+				$row["Name"] = $name;
 				return $row;
 			}
 			$return[$row["Name"]] = $row;
@@ -1056,6 +1066,18 @@ if (!defined("DRIVER")) {
 		return get_key_vals("SHOW VARIABLES");
 	}
 
+	/** Checks if C-style escapes are supported
+	* @return bool
+	*/
+	function is_c_style_escapes() {
+		static $c_style = null;
+		if ($c_style === null) {
+			$variables = get_key_vals("SHOW VARIABLES LIKE 'sql_mode'");
+			$c_style = strpos($variables["sql_mode"], 'NO_BACKSLASH_ESCAPES') === false;
+		}
+		return $c_style;
+	}
+
 	/** Get process list
 	* @return array ($row)
 	*/
@@ -1096,7 +1118,7 @@ if (!defined("DRIVER")) {
 			$return = "UNHEX($return)";
 		}
 		if (($field["type"] ?? null) == "bit") {
-			$return = "CONV($return, 2, 10) + 0";
+			$return = "CONVERT(b$return, UNSIGNED)";
 		}
 		if (preg_match("~geometry|point|linestring|polygon~", $field["type"] ?? null)) {
 			$prefix = (min_version(8) ? "ST_" : "");

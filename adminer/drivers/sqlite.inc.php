@@ -47,7 +47,7 @@ if (isset($_GET["sqlite"]) || isset($_GET["sqlite2"])) {
 						return false;
 					}
 					$row = $result->_result->fetchArray();
-					return $row[$field];
+					return $row ? $row[$field] : false;
 				}
 			}
 
@@ -319,7 +319,7 @@ if (isset($_GET["sqlite"]) || isset($_GET["sqlite2"])) {
 				"field" => $name,
 				"type" => (preg_match('~int~i', $type) ? "integer" : (preg_match('~char|clob|text~i', $type) ? "text" : (preg_match('~blob~i', $type) ? "blob" : (preg_match('~real|floa|doub~i', $type) ? "real" : "numeric")))),
 				"full_type" => $type,
-				"default" => (preg_match("~'(.*)'~", $default, $match) ? str_replace("''", "'", $match[1]) : ($default == "NULL" ? null : $default)),
+				"default" => (preg_match("~^'(.*)'$~", $default, $match) ? str_replace("''", "'", $match[1]) : ($default == "NULL" ? null : $default)),
 				"null" => !$row["notnull"],
 				"privileges" => array("select" => 1, "insert" => 1, "update" => 1),
 				"primary" => $row["pk"],
@@ -523,7 +523,7 @@ if (isset($_GET["sqlite"]) || isset($_GET["sqlite2"])) {
 		return true;
 	}
 
-	function recreate_table($table, $name, $fields, $originals, $foreign, $auto_increment, $indexes = array()) {
+	function recreate_table($table, $name, $fields, $originals, $foreign, $auto_increment = 0, $indexes = array()) {
 		global $connection;
 		if ($table != "") {
 			if (!$fields) {
@@ -762,6 +762,10 @@ if (isset($_GET["sqlite"]) || isset($_GET["sqlite2"])) {
 			$return[$key] = $connection->result("PRAGMA $key");
 		}
 		return $return;
+	}
+
+	function is_c_style_escapes() {
+		return true;
 	}
 
 	function show_status() {

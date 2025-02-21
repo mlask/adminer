@@ -9,20 +9,17 @@ if (isset($_GET["clickhouse"])) {
 		var $_db = 'default';
 
 		function rootQuery($db, $query) {
-			@ini_set('track_errors', 1); // @ - may be disabled
 			$file = @file_get_contents("$this->_url/?database=$db", false, stream_context_create(array('http' => array(
 				'method' => 'POST',
 				'content' => $this->isQuerySelectLike($query) ? "$query FORMAT JSONCompact" : $query,
 				'header' => 'Content-type: application/x-www-form-urlencoded',
 				'ignore_errors' => 1, // available since PHP 5.2.10
+				'follow_location' => 0,
+				'max_redirects' => 0,
 			))));
 
-			if ($file === false) {
-				$this->error = $php_errormsg;
-				return $file;
-			}
-			if (!preg_match('~^HTTP/[0-9.]+ 2~i', $http_response_header[0])) {
-				$this->error = lang('Invalid credentials.') . " $http_response_header[0]";
+			if ($file === false || !preg_match('~^HTTP/[0-9.]+ 2~i', $http_response_header[0])) {
+				$this->error = lang('Invalid credentials.');
 				return false;
 			}
 			$return = json_decode($file, true);
@@ -57,7 +54,7 @@ if (isset($_GET["clickhouse"])) {
 
 		function connect($server, $username, $password) {
 			preg_match('~^(https?://)?(.*)~', $server, $match);
-			$this->_url = ($match[1] ? $match[1] : "http://") . "$username:$password@$match[2]";
+			$this->_url = ($match[1] ? $match[1] : "http://") . urlencode($username) . ":" . urlencode($password) . "@$match[2]";
 			$return = $this->query('SELECT 1');
 			return (bool) $return;
 		}
@@ -93,8 +90,14 @@ if (isset($_GET["clickhouse"])) {
 		var $num_rows, $_rows, $columns, $meta, $_offset = 0;
 
 		function __construct($result) {
+			foreach ($result['data'] as $item) {
+				$row = array();
+				foreach ($item as $key => $val) {
+					$row[$key] = is_scalar($val) ? $val : json_encode($val, 256); // 256 - JSON_UNESCAPED_UNICODE
+				}
+				$this->_rows[] = $row;
+			}
 			$this->num_rows = $result['rows'];
-			$this->_rows = $result['data'];
 			$this->meta = $result['meta'];
 			$this->columns = array_column($this->meta, 'name');
 			reset($this->_rows);
@@ -213,17 +216,20 @@ if (isset($_GET["clickhouse"])) {
 	}
 
 	function connect() {
-		global $adminer;
+		$adminer = adminer();
 		$connection = new Min_DB;
-		$credentials = $adminer->credentials();
-		if ($connection->connect($credentials[0], $credentials[1], $credentials[2])) {
+		list($server, $username, $password) = $adminer->credentials();
+		if (!preg_match('~^(https?://)?[-a-z\d.]+(:\d+)?$~', $server)) {
+			return lang('Invalid server.');
+		}
+		if ($connection->connect($server, $username, $password)) {
 			return $connection;
 		}
 		return $connection->error;
 	}
 
 	function get_databases($flush) {
-		global $connection;
+		$connection = connection();
 		$result = get_rows('SHOW DATABASES');
 
 		$return = array();
@@ -250,7 +256,7 @@ if (isset($_GET["clickhouse"])) {
 	}
 
 	function logged_user() {
-		global $adminer;
+		$adminer = adminer();
 		$credentials = $adminer->credentials();
 		return $credentials[1];
 	}
@@ -270,7 +276,7 @@ if (isset($_GET["clickhouse"])) {
 	}
 
 	function table_status($name = "", $fast = false) {
-		global $connection;
+		$connection = connection();
 		$return = array();
 		$tables = get_rows("SELECT name, engine FROM system.tables WHERE database = " . q($connection->_db));
 		foreach ($tables as $table) {
@@ -340,7 +346,7 @@ if (isset($_GET["clickhouse"])) {
 	}
 
 	function error() {
-		global $connection;
+		$connection = connection();
 		return h($connection->error);
 	}
 

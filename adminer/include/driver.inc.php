@@ -11,6 +11,15 @@ function add_driver($id, $name) {
 	$drivers[$id] = $name;
 }
 
+/** Get driver name
+* @param string
+* @return string
+*/
+function get_driver($id) {
+	global $drivers;
+	return $drivers[$id];
+}
+
 /*abstract*/ class Min_SQL {
 	var $_conn;
 	
@@ -140,6 +149,14 @@ function add_driver($id, $name) {
 	*/
 	function convertSearch($idf, $val, $field) {
 		return $idf;
+	}
+
+	/** Convert operator so it can be used in search
+	* @param string $operator
+	* @return string
+	*/
+	function convertOperator($operator) {
+		return $operator;
 	}
 
 	/** Convert value returned by database to actual value

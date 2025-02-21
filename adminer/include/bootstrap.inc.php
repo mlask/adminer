@@ -1,11 +1,6 @@
 <?php
-function adminer_errors($errno, $errstr) {
-	return !!preg_match('~^(Trying to access array offset on value of type null|Undefined array key)~', $errstr);
-}
-
-error_reporting(6135); // errors and warnings
-set_error_handler('adminer_errors', E_WARNING);
-
+include "../adminer/include/version.inc.php";
+include "../adminer/include/errors.inc.php";
 include "../adminer/include/coverage.inc.php";
 
 // disable filter.default
@@ -81,7 +76,6 @@ include "../adminer/drivers/pgsql.inc.php";
 include "../adminer/drivers/oracle.inc.php";
 include "../adminer/drivers/mssql.inc.php";
 include "../adminer/drivers/mongo.inc.php";
-include "../adminer/drivers/elastic.inc.php";
 include "../adminer/drivers/sybase.inc.php";
 include "./include/adminer.inc.php";
 $adminer = (function_exists('adminer_object') ? adminer_object() : new Adminer);
@@ -110,7 +104,6 @@ define("ME", preg_replace('~\?.*~', '', relative_uri()) . '?'
 	. (DB != "" ? 'db=' . urlencode(DB) . '&' . (isset($_GET["ns"]) ? "ns=" . urlencode($_GET["ns"]) . "&" : "") : '')
 );
 
-include "../adminer/include/version.inc.php";
 include "../adminer/include/design.inc.php";
 include "../adminer/include/xxtea.inc.php";
 include "../adminer/include/auth.inc.php";
