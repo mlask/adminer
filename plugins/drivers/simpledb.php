@@ -1,11 +1,13 @@
 <?php
+namespace Adminer;
+
 add_driver("simpledb", "SimpleDB");
 
 if (isset($_GET["simpledb"])) {
-	define("DRIVER", "simpledb");
+	define('Adminer\DRIVER', "simpledb");
 
 	if (class_exists('SimpleXMLElement') && ini_bool('allow_url_fopen')) {
-		class Min_DB {
+		class Db {
 			var $extension = "SimpleXML", $server_info = '2009-04-15', $error, $timeout, $next, $affected_rows, $_result;
 
 			function select_db($database) {
@@ -32,7 +34,7 @@ if (isset($_GET["simpledb"])) {
 						'Value' => $sum,
 					))));
 				}
-				return new Min_Result($result);
+				return new Result($result);
 			}
 
 			function multi_query($query) {
@@ -50,10 +52,9 @@ if (isset($_GET["simpledb"])) {
 			function quote($string) {
 				return "'" . str_replace("'", "''", $string) . "'";
 			}
-
 		}
 
-		class Min_Result {
+		class Result {
 			var $num_rows, $_rows = array(), $_offset = 0;
 
 			function __construct($result) {
@@ -111,13 +112,18 @@ if (isset($_GET["simpledb"])) {
 				$keys = array_keys($this->_rows[0]);
 				return (object) array('name' => $keys[$this->_offset++]);
 			}
-
 		}
 	}
 
 
 
-	class Min_Driver extends Min_SQL {
+	class Driver extends SqlDriver {
+		static $possibleDrivers = array("SimpleXML + allow_url_fopen");
+		static $jush = "simpledb";
+
+		var $operators = array("=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "IN", "IS NULL", "NOT LIKE", "IS NOT NULL");
+		var $grouping = array("count");
+
 		public $primary = "itemName()";
 
 		function _chunkRequest($ids, $action, $params, $expand = array()) {
@@ -141,7 +147,7 @@ if (isset($_GET["simpledb"])) {
 		function _extractIds($table, $queryWhere, $limit) {
 			$return = array();
 			if (preg_match_all("~itemName\(\) = (('[^']*+')+)~", $queryWhere, $matches)) {
-				$return = array_map('idf_unescape', $matches[1]);
+				$return = array_map('Adminer\idf_unescape', $matches[1]);
 			} else {
 				foreach (sdb_request_all('Select', 'Item', array('SelectExpression' => 'SELECT itemName() FROM ' . table($table) . $queryWhere . ($limit ? " LIMIT 1" : ""))) as $item) {
 					$return[] = $item->Name;
@@ -236,26 +242,24 @@ if (isset($_GET["simpledb"])) {
 		function rollback() {
 			return false;
 		}
-		
+
 		function slowQuery($query, $timeout) {
 			$this->_conn->timeout = $timeout;
 			return $query;
 		}
-
 	}
 
 
 
-	function connect() {
-		$adminer = adminer();
-		list($host, , $password) = $adminer->credentials();
+	function connect($credentials) {
+		list($host, , $password) = $credentials;
 		if (!preg_match('~^(https?://)?[-a-z\d.]+(:\d+)?$~', $host)) {
 			return lang('Invalid server.');
 		}
 		if ($password != "") {
 			return lang('Database does not support password.');
 		}
-		return new Min_DB;
+		return new Db;
 	}
 
 	function support($feature) {
@@ -285,7 +289,7 @@ if (isset($_GET["simpledb"])) {
 		foreach (sdb_request_all('ListDomains', 'DomainName') as $table) {
 			$return[(string) $table] = 'table';
 		}
-		if ($connection->error && defined("PAGE_HEADER")) {
+		if ($connection->error && defined('Adminer\PAGE_HEADER')) {
 			echo "<p class='error'>" . error() . "\n";
 		}
 		return $return;
@@ -298,12 +302,14 @@ if (isset($_GET["simpledb"])) {
 			if (!$fast) {
 				$meta = sdb_request('DomainMetadata', array('DomainName' => $table));
 				if ($meta) {
-					foreach (array(
-						"Rows" => "ItemCount",
-						"Data_length" => "ItemNamesSizeBytes",
-						"Index_length" => "AttributeValuesSizeBytes",
-						"Data_free" => "AttributeNamesSizeBytes",
-					) as $key => $val) {
+					foreach (
+						array(
+							"Rows" => "ItemCount",
+							"Data_length" => "ItemNamesSizeBytes",
+							"Index_length" => "AttributeValuesSizeBytes",
+							"Data_free" => "AttributeNamesSizeBytes",
+						) as $key => $val
+					) {
 						$row[$key] = (string) $meta->$val;
 					}
 				}
@@ -325,9 +331,6 @@ if (isset($_GET["simpledb"])) {
 	}
 
 	function information_schema() {
-	}
-
-	function is_view($table_status) {
 	}
 
 	function indexes($table, $connection2 = null) {
@@ -393,22 +396,6 @@ if (isset($_GET["simpledb"])) {
 	function last_id() {
 	}
 
-	function hmac($algo, $data, $key, $raw_output = false) {
-		// can use hash_hmac() since PHP 5.1.2
-		$blocksize = 64;
-		if (strlen($key) > $blocksize) {
-			$key = pack("H*", $algo($key));
-		}
-		$key = str_pad($key, $blocksize, "\0");
-		$k_ipad = $key ^ str_repeat("\x36", $blocksize);
-		$k_opad = $key ^ str_repeat("\x5C", $blocksize);
-		$return = $algo($k_opad . pack("H*", $algo($k_ipad . $data)));
-		if ($raw_output) {
-			$return = pack("H*", $return);
-		}
-		return $return;
-	}
-
 	function sdb_request($action, $params = array()) {
 		$adminer = adminer();
 		$connection = connection();
@@ -424,11 +411,11 @@ if (isset($_GET["simpledb"])) {
 			$query .= '&' . rawurlencode($key) . '=' . rawurlencode($val);
 		}
 		$query = str_replace('%7E', '~', substr($query, 1));
-		$query .= "&Signature=" . urlencode(base64_encode(hmac('sha1', "POST\n" . preg_replace('~^https?://~', '', $host) . "\n/\n$query", $secret, true)));
+		$query .= "&Signature=" . urlencode(base64_encode(hash_hmac('sha1', "POST\n" . preg_replace('~^https?://~', '', $host) . "\n/\n$query", $secret, true)));
 		$file = @file_get_contents((preg_match('~^https?://~', $host) ? $host : "http://$host"), false, stream_context_create(array('http' => array(
 			'method' => 'POST', // may not fit in URL with GET
 			'content' => $query,
-			'ignore_errors' => 1, // available since PHP 5.2.10
+			'ignore_errors' => 1,
 			'follow_location' => 0,
 			'max_redirects' => 0,
 		))));
@@ -451,7 +438,7 @@ if (isset($_GET["simpledb"])) {
 		}
 		$connection->error = '';
 		$tag = $action . "Result";
-		return ($xml->$tag ? $xml->$tag : true);
+		return ($xml->$tag ?: true);
 	}
 
 	function sdb_request_all($action, $tag, $params = array(), $timeout = 0) {
@@ -479,16 +466,5 @@ if (isset($_GET["simpledb"])) {
 			}
 		} while ($xml->NextToken);
 		return $return;
-	}
-
-	function driver_config() {
-		return array(
-			'possible_drivers' => array("SimpleXML + allow_url_fopen"),
-			'jush' => "simpledb",
-			'operators' => array("=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "IN", "IS NULL", "NOT LIKE", "IS NOT NULL"),
-			'functions' => array(),
-			'grouping' => array("count"),
-			'edit_functions' => array(array("json")),
-		);
 	}
 }

@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	// label for database system selection (MySQL, SQLite, ...)
 	'System' => 'System',
@@ -206,7 +208,7 @@ $translations = array(
 	'Alter indexes' => 'Ändra index',
 	'Add next' => 'Lägg till nästa',
 	'Index Type' => 'Indextyp',
-	'Column (length)' => 'Kolumn (längd)',
+	'length' => 'längd',
 
 	'Foreign keys' => 'Främmande nycklar',
 	'Foreign key' => 'Främmande nyckel',

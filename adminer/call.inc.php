@@ -1,5 +1,7 @@
 <?php
-$PROCEDURE = ($_GET["name"] ? $_GET["name"] : $_GET["call"]);
+namespace Adminer;
+
+$PROCEDURE = ($_GET["name"] ?: $_GET["call"]);
 page_header(lang('Call') . ": " . h($PROCEDURE), $error);
 
 $routine = routine($_GET["call"], (isset($_GET["callf"]) ? "FUNCTION" : "PROCEDURE"));
@@ -28,21 +30,21 @@ if (!$error && $_POST) {
 		}
 		$call[] = (isset($out[$key]) ? "@" . idf_escape($field["field"]) : $val);
 	}
-	
+
 	$query = (isset($_GET["callf"]) ? "SELECT" : "CALL") . " " . table($PROCEDURE) . "(" . implode(", ", $call) . ")";
 	$start = microtime(true);
 	$result = $connection->multi_query($query);
 	$affected = $connection->affected_rows; // getting warnings overwrites this
 	echo $adminer->selectQuery($query, $start, !$result);
-	
+
 	if (!$result) {
 		echo "<p class='error'>" . error() . "\n";
 	} else {
-		$connection2 = connect();
+		$connection2 = connect($adminer->credentials());
 		if (is_object($connection2)) {
 			$connection2->select_db(DB);
 		}
-		
+
 		do {
 			$result = $connection->store_result();
 			if (is_object($result)) {
@@ -53,7 +55,7 @@ if (!$error && $_POST) {
 				;
 			}
 		} while ($connection->next_result());
-		
+
 		if ($out) {
 			select($connection->query("SELECT " . implode(", ", $out)));
 		}
@@ -64,7 +66,7 @@ if (!$error && $_POST) {
 <form action="" method="post">
 <?php
 if ($in) {
-	echo "<table cellspacing='0' class='layout'>\n";
+	echo "<table class='layout'>\n";
 	foreach ($in as $key) {
 		$field = $routine["fields"][$key];
 		$name = $field["field"];
@@ -88,3 +90,25 @@ if ($in) {
 <input type="submit" value="<?php echo lang('Call'); ?>">
 <input type="hidden" name="token" value="<?php echo $token; ?>">
 </form>
+
+<pre>
+<?php
+function pre_tr($s) {
+	return preg_replace('~^~m', '<tr>', preg_replace('~\|~', '<td>', preg_replace('~\|$~m', "", rtrim($s))));
+}
+$table = '(\+--[-+]+\+\n)';
+$row = '(\| .* \|\n)';
+echo preg_replace_callback(
+	"~^$table?$row$table?($row*)$table?~m",
+	function ($match) {
+		$first_row = pre_tr($match[2]);
+		return "<table>\n" . ($match[1] ? "<thead>$first_row</thead>\n" : $first_row) . pre_tr($match[4]) . "\n</table>";
+	},
+	preg_replace(
+		'~(\n(    -|mysql)&gt; )(.+)~',
+		"\\1<code class='jush-sql'>\\3</code>",
+		preg_replace('~(.+)\n---+\n~', "<b>\\1</b>\n", h($routine['comment']))
+	)
+);
+?>
+</pre>

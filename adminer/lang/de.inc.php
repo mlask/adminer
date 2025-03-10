@@ -1,8 +1,10 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	'Login' => 'Login',
 	'Logout successful.' => 'Abmeldung erfolgreich.',
-	'Thanks for using Adminer, consider <a href="https://www.adminer.org/en/donation/">donating</a>.' => 'Danke, dass Sie Adminer genutzt haben. <a href="https://www.adminer.org/de/donation/">Spenden willkommen!</a>',
+	'Thanks for using Adminer, consider <a href="https://www.adminer.org/en/donation/">donating</a>.' => 'Danke, dass Sie Adminer genutzt haben. <a href="https://www.adminer.org/de/donation/">Spenden willkommen!</a>.',
 	'Invalid credentials.' => 'Ungültige Anmelde-Informationen.',
 	'Server' => 'Server',
 	'Username' => 'Benutzer',
@@ -96,7 +98,7 @@ $translations = array(
 	'ON DELETE' => 'ON DELETE',
 	'ON UPDATE' => 'ON UPDATE',
 	'Index Type' => 'Index-Typ',
-	'Column (length)' => 'Spalte (Länge)',
+	'length' => 'Länge',
 	'View has been dropped.' => 'View wurde entfernt.',
 	'View has been altered.' => 'View wurde geändert.',
 	'View has been created.' => 'View wurde erstellt.',

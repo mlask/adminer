@@ -65,7 +65,7 @@ function mixin(target, source) {
 /** Add or remove CSS class
 * @param HTMLElement
 * @param string
-* @param [bool]
+* @param [boolean]
 */
 function alterClass(el, className, enable) {
 	if (el) {
@@ -900,7 +900,8 @@ function addEvent(el, action, handler) {
 * @param HTMLElement
 */
 function focus(el) {
-	setTimeout(function () { // this has to be an anonymous function because Firefox passes some arguments to setTimeout callback
+	setTimeout(function () {
+		// this has to be an anonymous function because Firefox passes some arguments to setTimeout callback
 		el.focus();
 	}, 0);
 }

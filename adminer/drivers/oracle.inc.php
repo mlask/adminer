@@ -1,10 +1,12 @@
 <?php
+namespace Adminer;
+
 $drivers["oracle"] = "Oracle (beta)";
 
 if (isset($_GET["oracle"])) {
-	define("DRIVER", "oracle");
+	define('Adminer\DRIVER', "oracle");
 	if (extension_loaded("oci8")) {
-		class Min_DB {
+		class Db {
 			var $extension = "oci8", $_link, $_result, $server_info, $affected_rows, $errno, $error;
 			var $_current_db;
 
@@ -50,7 +52,7 @@ if (isset($_GET["oracle"])) {
 				restore_error_handler();
 				if ($return) {
 					if (oci_num_fields($result)) {
-						return new Min_Result($result);
+						return new Result($result);
 					}
 					$this->affected_rows = oci_num_rows($result);
 					oci_free_statement($result);
@@ -70,16 +72,16 @@ if (isset($_GET["oracle"])) {
 				return false;
 			}
 
-			function result($query, $field = 1) {
+			function result($query, $field = 0) {
 				$result = $this->query($query);
 				if (!is_object($result) || !oci_fetch($result->_result)) {
 					return false;
 				}
-				return oci_result($result->_result, $field);
+				return oci_result($result->_result, $field + 1);
 			}
 		}
 
-		class Min_Result {
+		class Result {
 			var $_result, $_offset = 1, $num_rows;
 
 			function __construct($result) {
@@ -105,7 +107,7 @@ if (isset($_GET["oracle"])) {
 
 			function fetch_field() {
 				$column = $this->_offset++;
-				$return = new stdClass;
+				$return = new \stdClass;
 				$return->name = oci_field_name($this->_result, $column);
 				$return->orgname = $return->name;
 				$return->type = oci_field_type($this->_result, $column);
@@ -119,7 +121,7 @@ if (isset($_GET["oracle"])) {
 		}
 
 	} elseif (extension_loaded("pdo_oci")) {
-		class Min_DB extends Min_PDO {
+		class Db extends PdoDb {
 			var $extension = "PDO_OCI";
 			var $_current_db;
 
@@ -138,7 +140,34 @@ if (isset($_GET["oracle"])) {
 
 
 
-	class Min_Driver extends Min_SQL {
+	class Driver extends SqlDriver {
+		static $possibleDrivers = array("OCI8", "PDO_OCI");
+		static $jush = "oracle";
+
+		var $editFunctions = array(
+			array( //! no parentheses
+				"date" => "current_date",
+				"timestamp" => "current_timestamp",
+			), array(
+				"number|float|double" => "+/-",
+				"date|timestamp" => "+ interval/- interval",
+				"char|clob" => "||",
+			)
+		);
+
+		var $operators = array("=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "IN", "IS NULL", "NOT LIKE", "NOT IN", "IS NOT NULL", "SQL");
+		var $functions = array("length", "lower", "round", "upper");
+		var $grouping = array("avg", "count", "count distinct", "max", "min", "sum");
+
+		function __construct($connection) {
+			parent::__construct($connection);
+			$this->types = array(
+				lang('Numbers') => array("number" => 38, "binary_float" => 12, "binary_double" => 21),
+				lang('Date and time') => array("date" => 10, "timestamp" => 29, "interval year" => 12, "interval day" => 28), //! year(), day() to second()
+				lang('Strings') => array("char" => 2000, "varchar2" => 4000, "nchar" => 2000, "nvarchar2" => 4000, "clob" => 4294967295, "nclob" => 4294967295),
+				lang('Binary') => array("raw" => 2000, "long raw" => 2147483648, "blob" => 4294967295, "bfile" => 4294967296),
+			);
+		}
 
 		//! support empty $set in insert()
 
@@ -157,12 +186,17 @@ if (isset($_GET["oracle"])) {
 						$where[] = "$key = $val";
 					}
 				}
-				if (!(($where && queries("UPDATE " . table($table) . " SET " . implode(", ", $update) . " WHERE " . implode(" AND ", $where)) && $connection->affected_rows)
-					|| queries("INSERT INTO " . table($table) . " (" . implode(", ", array_keys($set)) . ") VALUES (" . implode(", ", $set) . ")")
-				)) {
+				if (
+					!(($where && queries("UPDATE " . table($table) . " SET " . implode(", ", $update) . " WHERE " . implode(" AND ", $where)) && $connection->affected_rows)
+					|| queries("INSERT INTO " . table($table) . " (" . implode(", ", array_keys($set)) . ") VALUES (" . implode(", ", $set) . ")"))
+				) {
 					return false;
 				}
 			}
+			return true;
+		}
+
+		function hasCStyleEscapes() {
 			return true;
 		}
 	}
@@ -177,10 +211,8 @@ if (isset($_GET["oracle"])) {
 		return idf_escape($idf);
 	}
 
-	function connect() {
-		global $adminer;
-		$connection = new Min_DB;
-		$credentials = $adminer->credentials();
+	function connect($credentials) {
+		$connection = new Db;
 		if ($connection->connect($credentials[0], $credentials[1], $credentials[2])) {
 			return $connection;
 		}
@@ -188,7 +220,8 @@ if (isset($_GET["oracle"])) {
 	}
 
 	function get_databases() {
-		return get_vals("SELECT DISTINCT tablespace_name FROM (
+		return get_vals(
+			"SELECT DISTINCT tablespace_name FROM (
 SELECT tablespace_name FROM user_tablespaces
 UNION SELECT tablespace_name FROM all_tables WHERE tablespace_name IS NOT NULL
 )
@@ -208,8 +241,7 @@ ORDER BY 1"
 	}
 
 	function db_collation($db, $collations) {
-		global $connection;
-		return $connection->result("SELECT value FROM nls_database_parameters WHERE parameter = 'NLS_CHARACTERSET'"); //! respect $db
+		return get_val("SELECT value FROM nls_database_parameters WHERE parameter = 'NLS_CHARACTERSET'"); //! respect $db
 	}
 
 	function engines() {
@@ -217,13 +249,12 @@ ORDER BY 1"
 	}
 
 	function logged_user() {
-		global $connection;
-		return $connection->result("SELECT USER FROM DUAL");
+		return get_val("SELECT USER FROM DUAL");
 	}
 
 	function get_current_db() {
 		global $connection;
-		$db = $connection->_current_db ? $connection->_current_db : DB;
+		$db = $connection->_current_db ?: DB;
 		unset($connection->_current_db);
 		return $db;
 	}
@@ -237,23 +268,23 @@ ORDER BY 1"
 
 	function views_table($columns) {
 		$owner = where_owner('');
-		return "(SELECT $columns FROM all_views WHERE " . ($owner ? $owner : "rownum < 0") . ")";
+		return "(SELECT $columns FROM all_views WHERE " . ($owner ?: "rownum < 0") . ")";
 	}
 
 	function tables_list() {
 		$view = views_table("view_name");
 		$owner = where_owner(" AND ");
-		return get_key_vals("SELECT table_name, 'table' FROM all_tables WHERE tablespace_name = " . q(DB) . "$owner
+		return get_key_vals(
+			"SELECT table_name, 'table' FROM all_tables WHERE tablespace_name = " . q(DB) . "$owner
 UNION SELECT view_name, 'view' FROM $view
 ORDER BY 1"
 		); //! views don't have schema
 	}
 
 	function count_tables($databases) {
-		global $connection;
 		$return = array();
 		foreach ($databases as $db) {
-			$return[$db] = $connection->result("SELECT COUNT(*) FROM all_tables WHERE tablespace_name = " . q($db));
+			$return[$db] = get_val("SELECT COUNT(*) FROM all_tables WHERE tablespace_name = " . q($db));
 		}
 		return $return;
 	}
@@ -264,10 +295,11 @@ ORDER BY 1"
 		$db = get_current_db();
 		$view = views_table("view_name");
 		$owner = where_owner(" AND ");
-		foreach (get_rows('SELECT table_name "Name", \'table\' "Engine", avg_row_len * num_rows "Data_length", num_rows "Rows" FROM all_tables WHERE tablespace_name = ' . q($db) . $owner . ($name != "" ? " AND table_name = $search" : "") . "
+		foreach (
+			get_rows('SELECT table_name "Name", \'table\' "Engine", avg_row_len * num_rows "Data_length", num_rows "Rows" FROM all_tables WHERE tablespace_name = ' . q($db) . $owner . ($name != "" ? " AND table_name = $search" : "") . "
 UNION SELECT view_name, 'view', 0, 0 FROM $view" . ($name != "" ? " WHERE view_name = $search" : "") . "
-ORDER BY 1"
-		) as $row) {
+ORDER BY 1") as $row
+		) {
 			if ($name != "") {
 				return $row;
 			}
@@ -302,7 +334,7 @@ ORDER BY 1"
 				"null" => ($row["NULLABLE"] == "Y"),
 				//! "auto_increment" => false,
 				//! "collation" => $row["CHARACTER_SET_NAME"],
-				"privileges" => array("insert" => 1, "select" => 1, "update" => 1),
+				"privileges" => array("insert" => 1, "select" => 1, "update" => 1, "where" => 1, "order" => 1),
 				//! "comment" => $row["Comment"],
 				//! "primary" => ($row["Key"] == "PRI"),
 			);
@@ -313,12 +345,14 @@ ORDER BY 1"
 	function indexes($table, $connection2 = null) {
 		$return = array();
 		$owner = where_owner(" AND ", "aic.table_owner");
-		foreach (get_rows("SELECT aic.*, ac.constraint_type, atc.data_default
+		foreach (
+			get_rows("SELECT aic.*, ac.constraint_type, atc.data_default
 FROM all_ind_columns aic
 LEFT JOIN all_constraints ac ON aic.index_name = ac.constraint_name AND aic.table_name = ac.table_name AND aic.index_owner = ac.owner
 LEFT JOIN all_tab_cols atc ON aic.column_name = atc.column_name AND aic.table_name = atc.table_name AND aic.index_owner = atc.owner
 WHERE aic.table_name = " . q($table) . "$owner
-ORDER BY ac.constraint_type, aic.column_position", $connection2) as $row) {
+ORDER BY ac.constraint_type, aic.column_position", $connection2) as $row
+		) {
 			$index_name = $row["INDEX_NAME"];
 			$column_name = $row["DATA_DEFAULT"];
 			$column_name = ($column_name ? trim($column_name, '"') : $row["COLUMN_NAME"]); // trim - possibly wrapped in quotes but never contains quotes inside
@@ -341,7 +375,7 @@ ORDER BY ac.constraint_type, aic.column_position", $connection2) as $row) {
 	}
 
 	function information_schema($db) {
-		return false;
+		return get_schema() == "INFORMATION_SCHEMA";
 	}
 
 	function error() {
@@ -464,12 +498,11 @@ AND c_src.TABLE_NAME = " . q($table);
 
 	function schemas() {
 		$return = get_vals("SELECT DISTINCT owner FROM dba_segments WHERE owner IN (SELECT username FROM dba_users WHERE default_tablespace NOT IN ('SYSTEM','SYSAUX')) ORDER BY 1");
-		return ($return ? $return : get_vals("SELECT DISTINCT owner FROM all_tables WHERE tablespace_name = " . q(DB) . " ORDER BY 1"));
+		return ($return ?: get_vals("SELECT DISTINCT owner FROM all_tables WHERE tablespace_name = " . q(DB) . " ORDER BY 1"));
 	}
 
 	function get_schema() {
-		global $connection;
-		return $connection->result("SELECT sys_context('USERENV', 'SESSION_USER') FROM dual");
+		return get_val("SELECT sys_context('USERENV', 'SESSION_USER') FROM dual");
 	}
 
 	function set_schema($scheme, $connection2 = null) {
@@ -482,10 +515,6 @@ AND c_src.TABLE_NAME = " . q($table);
 
 	function show_variables() {
 		return get_key_vals('SELECT name, display_value FROM v$parameter');
-	}
-
-	function is_c_style_escapes() {
-		return true;
 	}
 
 	function process_list() {
@@ -511,39 +540,5 @@ ORDER BY PROCESS
 
 	function support($feature) {
 		return preg_match('~^(columns|database|drop_col|indexes|descidx|processlist|scheme|sql|status|table|variables|view)$~', $feature); //!
-	}
-
-	function driver_config() {
-		$types = array();
-		$structured_types = array();
-		foreach (array(
-			lang('Numbers') => array("number" => 38, "binary_float" => 12, "binary_double" => 21),
-			lang('Date and time') => array("date" => 10, "timestamp" => 29, "interval year" => 12, "interval day" => 28), //! year(), day() to second()
-			lang('Strings') => array("char" => 2000, "varchar2" => 4000, "nchar" => 2000, "nvarchar2" => 4000, "clob" => 4294967295, "nclob" => 4294967295),
-			lang('Binary') => array("raw" => 2000, "long raw" => 2147483648, "blob" => 4294967295, "bfile" => 4294967296),
-		) as $key => $val) {
-			$types += $val;
-			$structured_types[$key] = array_keys($val);
-		}
-		return array(
-			'possible_drivers' => array("OCI8", "PDO_OCI"),
-			'jush' => "oracle",
-			'types' => $types,
-			'structured_types' => $structured_types,
-			'unsigned' => array(),
-			'operators' => array("=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "IN", "IS NULL", "NOT LIKE", "NOT IN", "IS NOT NULL", "SQL"),
-			'functions' => array("length", "lower", "round", "upper"),
-			'grouping' => array("avg", "count", "count distinct", "max", "min", "sum"),
-			'edit_functions' => array(
-				array( //! no parentheses
-					"date" => "current_date",
-					"timestamp" => "current_timestamp",
-				), array(
-					"number|float|double" => "+/-",
-					"date|timestamp" => "+ interval/- interval",
-					"char|clob" => "||",
-				)
-			),
-		);
 	}
 }

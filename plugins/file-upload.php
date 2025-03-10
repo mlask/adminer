@@ -40,7 +40,7 @@ class AdminerFileUpload {
 			if (!move_uploaded_file($_FILES[$name]["tmp_name"], "$this->uploadPath$table/$regs[1]-$filename")) {
 				return false;
 			}
-			return q($filename);
+			return Adminer\q($filename);
 		}
 	}
 
@@ -49,5 +49,4 @@ class AdminerFileUpload {
 			$link = "$this->displayPath$_GET[select]/$regs[1]-$val";
 		}
 	}
-
 }

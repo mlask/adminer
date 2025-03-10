@@ -3,13 +3,15 @@
 * @author Steve Krämer
 */
 
+namespace Adminer;
+
 add_driver('firebird', 'Firebird (alpha)');
 
 if (isset($_GET["firebird"])) {
-	define("DRIVER", "firebird");
+	define('Adminer\DRIVER', "firebird");
 
-	if (extension_loaded("interbase") ) {
-		class Min_DB {
+	if (extension_loaded("interbase")) {
+		class Db {
 			var
 				$extension = "Firebird",
 				$server_info,
@@ -20,7 +22,7 @@ if (isset($_GET["firebird"])) {
 			;
 
 			function connect($server, $username, $password) {
-				$this->_link = ibase_connect($server, $username, $password); 
+				$this->_link = ibase_connect($server, $username, $password);
 				if ($this->_link) {
 					$url_parts = explode(':', $server);
 					$this->service_link = ibase_service_attach($url_parts[0], $username, $password);
@@ -52,7 +54,7 @@ if (isset($_GET["firebird"])) {
 					$this->affected_rows = ibase_affected_rows($this->_link);
 					return true;
 				}
-				return new Min_Result($result);
+				return new Result($result);
 			}
 
 			function multi_query($query) {
@@ -77,7 +79,7 @@ if (isset($_GET["firebird"])) {
 			}
 		}
 
-		class Min_Result {
+		class Result {
 			var $num_rows, $_result, $_offset = 0;
 
 			function __construct($result) {
@@ -109,10 +111,14 @@ if (isset($_GET["firebird"])) {
 		}
 
 	}
-	
-	
-	
-	class Min_Driver extends Min_SQL {
+
+
+
+	class Driver extends SqlDriver {
+		static $possibleDrivers = array("interbase");
+		static $jush = "firebird";
+
+		var $operators = array("=");
 	}
 
 
@@ -125,10 +131,8 @@ if (isset($_GET["firebird"])) {
 		return idf_escape($idf);
 	}
 
-	function connect() {
-		$adminer = adminer();
-		$connection = new Min_DB;
-		$credentials = $adminer->credentials();
+	function connect($credentials) {
+		$connection = new Db;
 		if ($connection->connect($credentials[0], $credentials[1], $credentials[2])) {
 			return $connection;
 		}
@@ -140,7 +144,7 @@ if (isset($_GET["firebird"])) {
 	}
 
 	function limit($query, $where, $limit, $offset = 0, $separator = " ") {
-		$return = ''; 
+		$return = '';
 		$return .= ($limit !== null ? $separator . "FIRST $limit" . ($offset ? " SKIP $offset" : "") : "");
 		$return .= " $query$where";
 		return $return;
@@ -171,7 +175,7 @@ if (isset($_GET["firebird"])) {
 		while ($row = ibase_fetch_assoc($result)) {
 				$return[$row['RDB$RELATION_NAME']] = 'table';
 		}
-		ksort($return);	
+		ksort($return);
 		return $return;
 	}
 
@@ -250,7 +254,7 @@ ORDER BY r.RDB$FIELD_POSITION';
 				"null" => (trim($row["FIELD_NOT_NULL_CONSTRAINT"]) == "YES"),
 				"auto_increment" => '0',
 				"collation" => trim($row["FIELD_COLLATION"]),
-				"privileges" => array("insert" => 1, "select" => 1, "update" => 1),
+				"privileges" => array("insert" => 1, "select" => 1, "update" => 1, "where" => 1, "order" => 1),
 				"comment" => trim($row["FIELD_DESCRIPTION"]),
 			);
 		}
@@ -295,30 +299,7 @@ ORDER BY RDB$INDEX_SEGMENTS.RDB$FIELD_POSITION';
 		return array();
 	}
 
-	function schemas() {
-		return array();
-	}
-
-	function get_schema() {
-		return "";
-	}
-
-	function set_schema($schema) {
-		return true;
-	}
-
 	function support($feature) {
 		return preg_match("~^(columns|sql|status|table)$~", $feature);
-	}
-
-	function driver_config() {
-		return array(
-			'possible_drivers' => array("interbase"),
-			'jush' => "firebird",
-			'operators' => array("="),
-			'functions' => array(),
-			'grouping' => array(),
-			'edit_functions' => array(),
-		);
 	}
 }

@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	'Login' => 'Logi sisse',
 	'Logout successful.' => 'Väljalogimine õnnestus.',
@@ -95,7 +97,7 @@ $translations = array(
 	'ON DELETE' => 'ON DELETE',
 	'ON UPDATE' => 'ON UPDATE',
 	'Index Type' => 'Indeksi tüüp',
-	'Column (length)' => 'Veerg (pikkus)',
+	'length' => 'pikkus',
 	'View has been dropped.' => 'Vaade (VIEW) on edukalt kustutatud.',
 	'View has been altered.' => 'Vaade (VIEW) on edukalt muudetud.',
 	'View has been created.' => 'Vaade (VIEW) on edukalt loodud.',

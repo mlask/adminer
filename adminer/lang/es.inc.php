@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	'Login' => 'Login',
 	'Logout successful.' => 'Sesión finalizada con éxito.',
@@ -95,7 +97,7 @@ $translations = array(
 	'ON DELETE' => 'AL BORRAR',
 	'ON UPDATE' => 'AL ACTUALIZAR',
 	'Index Type' => 'Tipo de índice',
-	'Column (length)' => 'Columna (longitud)',
+	'length' => 'longitud',
 	'View has been dropped.' => 'Vista eliminada.',
 	'View has been altered.' => 'Vista modificada.',
 	'View has been created.' => 'Vista creada.',

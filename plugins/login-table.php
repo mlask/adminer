@@ -18,17 +18,15 @@ CREATE TABLE login (
 class AdminerLoginTable {
 	/** @access protected */
 	var $database;
-	
+
 	/** Set database of login table
 	* @param string
 	*/
 	function __construct($database) {
 		$this->database = $database;
 	}
-	
+
 	function login($login, $password) {
-		$connection = connection();
-		return (bool) $connection->result("SELECT COUNT(*) FROM " . idf_escape($this->database) . ".login WHERE login = " . q($login) . " AND password_sha1 = " . q(sha1($password)));
+		return (bool) Adminer\get_val("SELECT COUNT(*) FROM " . Adminer\idf_escape($this->database) . ".login WHERE login = " . Adminer\q($login) . " AND password_sha1 = " . Adminer\q(sha1($password)));
 	}
-	
 }

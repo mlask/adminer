@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	'Login' => 'Authentification',
 	'Logout successful.' => 'Au revoir !',
@@ -93,7 +95,7 @@ $translations = array(
 	'ON DELETE' => 'ON DELETE',
 	'ON UPDATE' => 'ON UPDATE',
 	'Index Type' => 'Type d\'index',
-	'Column (length)' => 'Colonne (longueur)',
+	'length' => 'longueur',
 	'View has been dropped.' => 'La vue a été effacée.',
 	'View has been altered.' => 'La vue a été modifiée.',
 	'View has been created.' => 'La vue a été créée.',
@@ -296,7 +298,7 @@ $translations = array(
 	'The action will be performed after successful login with the same credentials.' => 'Cette action sera exécutée après s\'être connecté avec les mêmes données de connexion.',
 	'Connecting to privileged ports is not allowed.' => 'La connexion aux ports privilégiés n\'est pas autorisée.',
 	'There is a space in the input password which might be the cause.' => 'Il y a un espace dans le mot de passe entré qui pourrait en être la cause.',
-	'Unknown error.' => 'Erreur inconnue',
-	'Database does not support password.' => 'La base de données ne support pas les mots de passe',
+	'Unknown error.' => 'Erreur inconnue.',
+	'Database does not support password.' => 'La base de données ne support pas les mots de passe.',
 	'Disable %s or enable %s or %s extensions.' => 'Désactiver %s ou activer %s or %s extensions.',
 );

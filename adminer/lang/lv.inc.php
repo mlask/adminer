@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	'Login' => 'Ieiet',
 	'Logout successful.' => 'Jūs veiksmīgi izgājāt no sistēmas.',
@@ -36,7 +38,7 @@ $translations = array(
 	'select' => 'izvēlēties',
 	'Item has been deleted.' => 'Ieraksts dzests.',
 	'Item has been updated.' => 'Ieraksts atjaunots.',
-	'Item%s has been inserted.' => 'Ieraksti tika ievietoti.',
+	'Item%s has been inserted.' => 'Ieraksti%s tika ievietoti.',
 	'Edit' => 'Rediģēt',
 	'Insert' => 'Ievietot',
 	'Save and insert next' => 'Saglabāt un ievietot nākamo',
@@ -95,7 +97,7 @@ $translations = array(
 	'ON DELETE' => 'Pie dzēšanas',
 	'ON UPDATE' => 'Pie atjaunošanas',
 	'Index Type' => 'Indeksa tips',
-	'Column (length)' => 'Lauks (garums)',
+	'length' => 'garums',
 	'View has been dropped.' => 'Skats dzēsts.',
 	'View has been altered.' => 'Skats izmainīts.',
 	'View has been created.' => 'Skats izveidots.',

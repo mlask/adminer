@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	'Login' => 'Войти',
 	'Logout successful.' => 'Вы успешно покинули систему.',
@@ -95,7 +97,7 @@ $translations = array(
 	'ON DELETE' => 'При стирании',
 	'ON UPDATE' => 'При обновлении',
 	'Index Type' => 'Тип индекса',
-	'Column (length)' => 'Поле (длина)',
+	'length' => 'длина',
 	'View has been dropped.' => 'Представление было удалено.',
 	'View has been altered.' => 'Представление было изменено.',
 	'View has been created.' => 'Представление было создано.',

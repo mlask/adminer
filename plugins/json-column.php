@@ -16,10 +16,10 @@ class AdminerJsonColumn {
 	}
 
 	private function _buildTable($json) {
-		echo '<table cellspacing="0" style="margin:2px; font-size:100%;">';
+		echo '<table style="margin:2px; font-size:100%;">';
 		foreach ($json as $key => $val) {
 			echo '<tr>';
-			echo '<th>' . h($key) . '</th>';
+			echo '<th>' . Adminer\h($key) . '</th>';
 			echo '<td>';
 			if (is_scalar($val) || $val === null) {
 				if (is_bool($val)) {
@@ -27,7 +27,7 @@ class AdminerJsonColumn {
 				} elseif ($val === null) {
 					$val = 'null';
 				} elseif (!is_numeric($val)) {
-					$val = '"' . h(addcslashes($val, "\r\n\"")) . '"';
+					$val = '"' . Adminer\h(addcslashes($val, "\r\n\"")) . '"';
 				}
 				echo '<code class="jush-js">' . $val . '</code>';
 			} else {

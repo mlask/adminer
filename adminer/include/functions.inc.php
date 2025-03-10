@@ -1,8 +1,10 @@
 <?php
+namespace Adminer;
+
 // This file is used both in Adminer and Adminer Editor.
 
 /** Get database connection
-* @return Min_DB
+* @return Db
 */
 function connection() {
 	// can be used in customization, $connection is minified
@@ -96,7 +98,7 @@ function bracket_escape($idf, $back = false) {
 /** Check if connection has at least the given version
 * @param string required version
 * @param string required MariaDB version
-* @param Min_DB defaults to $connection
+* @param Db defaults to $connection
 * @return bool
 */
 function min_version($version, $maria_db = "", $connection2 = null) {
@@ -113,7 +115,7 @@ function min_version($version, $maria_db = "", $connection2 = null) {
 }
 
 /** Get connection charset
-* @param Min_DB
+* @param Db
 * @return string
 */
 function charset($connection) {
@@ -202,10 +204,16 @@ function optionlist($options, $selected = null, $use_keys = false) {
 			$opts = $v;
 		}
 		foreach ($opts as $key => $val) {
-			if ($val === '---')
+			if ($val === '---') {
 				$return .= '<hr />';
-			else
-				$return .= '<option' . ($use_keys || is_string($key) ? ' value="' . h($key) . '"' : '') . (($use_keys || is_string($key) ? (string) $key : $val) === $selected ? ' selected' : '') . '>' . h($val);
+			}
+			else {
+				$return .= '<option'
+					. ($use_keys || is_string($key) ? ' value="' . h($key) . '"' : '')
+					. ($selected !== null && ($use_keys || is_string($key) ? (string) $key : $val) === $selected ? ' selected' : '')
+					. '>' . h($val)
+				;
+			}
 		}
 		if (is_array($v)) {
 			$return .= '</optgroup>';
@@ -267,18 +275,6 @@ function print_fieldset($id, $legend, $visible = false) {
 */
 function bold($bold, $class = "") {
 	return ($bold ? " class='active $class'" : ($class ? " class='$class'" : ""));
-}
-
-/** Generate class for odd rows
-* @param string return this for odd rows, empty to reset counter
-* @return string
-*/
-function odd($return = ' class="odd"') {
-	static $i = 0;
-	if (!$return) { // reset counter
-		$i = -1;
-	}
-	return ($i++ % 2 ? $return : '');
 }
 
 /** Escape string for JavaScript apostrophes
@@ -346,6 +342,16 @@ function q($string) {
 	return $connection->quote($string);
 }
 
+/** Get single value from database
+* @param string
+* @param int
+* @return string or false if error
+*/
+function get_val($query, $field = 0) {
+	global $connection;
+	return $connection->result($query, $field);
+}
+
 /** Get list of values from database
 * @param string
 * @param mixed
@@ -365,7 +371,7 @@ function get_vals($query, $column = 0) {
 
 /** Get keys from first column and values from second
 * @param string
-* @param Min_DB
+* @param Db
 * @param bool
 * @return array
 */
@@ -390,7 +396,7 @@ function get_key_vals($query, $connection2 = null, $set_keys = true) {
 
 /** Get all rows of result
 * @param string
-* @param Min_DB
+* @param Db
 * @param string
 * @return array of associative arrays
 */
@@ -403,7 +409,7 @@ function get_rows($query, $connection2 = null, $error = "<p class='error'>") {
 		while ($row = $result->fetch_assoc()) {
 			$return[] = $row;
 		}
-	} elseif (!$result && !is_object($connection2) && $error && defined("PAGE_HEADER")) {
+	} elseif (!$result && !is_object($connection2) && $error && (defined('Adminer\PAGE_HEADER') || $error == "-- ")) {
 		echo $error . error() . "\n";
 	}
 	return $return;
@@ -446,19 +452,19 @@ function escape_key($key) {
 * @return string
 */
 function where($where, $fields = array()) {
-	global $connection, $jush;
+	global $connection;
 	$return = array();
 	foreach ((array) $where["where"] as $key => $val) {
 		$key = bracket_escape($key, 1); // 1 - back
 		$column = escape_key($key);
 		$return[] = $column
-			. ($jush == "sql" && $fields[$key]["type"] == "json" ? " = CAST(" . q($val) . " AS JSON)"
-				: ($jush == "sql" && is_numeric($val) && preg_match('~\.~', $val) ? " LIKE " . q($val) // LIKE because of floats but slow with ints
-				: ($jush == "mssql" ? " LIKE " . q(preg_replace('~[_%[]~', '[\0]', $val)) // LIKE because of text
+			. (JUSH == "sql" && $fields[$key]["type"] == "json" ? " = CAST(" . q($val) . " AS JSON)"
+				: (JUSH == "sql" && is_numeric($val) && preg_match('~\.~', $val) ? " LIKE " . q($val) // LIKE because of floats but slow with ints
+				: (JUSH == "mssql" ? " LIKE " . q(preg_replace('~[_%[]~', '[\0]', $val)) // LIKE because of text
 				: " = " . unconvert_field($fields[$key], q($val))
 			)))
 		; //! enum and set
-		if ($jush == "sql" && preg_match('~char|text~', $fields[$key]["type"] ?? null) && preg_match("~[^ -@]~", $val)) { // not just [a-z] to catch non-ASCII characters
+		if (JUSH == "sql" && preg_match('~char|text~', $fields[$key]["type"] ?? null) && preg_match("~[^ -@]~", $val)) { // not just [a-z] to catch non-ASCII characters
 			$return[] = "$column = " . q($val) . " COLLATE " . charset($connection) . "_bin";
 		}
 	}
@@ -513,17 +519,19 @@ function convert_fields($columns, $fields, $select = array()) {
 /** Set cookie valid on current path
 * @param string
 * @param string
-* @param int number of seconds, 0 for session cookie
+* @param int number of seconds, 0 for session cookie, 2592000 - 30 days
 * @return bool
 */
-function cookie($name, $value, $lifetime = 2592000) { // 2592000 - 30 days
+function cookie($name, $value, $lifetime = 2592000) {
 	global $HTTPS;
-	return header("Set-Cookie: $name=" . urlencode($value)
-		. ($lifetime ? "; expires=" . gmdate("D, d M Y H:i:s", time() + $lifetime) . " GMT" : "")
-		. "; path=" . preg_replace('~\?.*~', '', $_SERVER["REQUEST_URI"])
-		. ($HTTPS ? "; secure" : "")
-		. "; HttpOnly; SameSite=lax",
-		false);
+	return header(
+		"Set-Cookie: $name=" . urlencode($value)
+			. ($lifetime ? "; expires=" . gmdate("D, d M Y H:i:s", time() + $lifetime) . " GMT" : "")
+			. "; path=" . preg_replace('~\?.*~', '', $_SERVER["REQUEST_URI"])
+			. ($HTTPS ? "; secure" : "")
+			. "; HttpOnly; SameSite=lax",
+		false
+	);
 }
 
 /** Restart stopped session
@@ -644,7 +652,7 @@ function query_redirect($query, $location, $message, $redirect = true, $execute 
 
 /** Execute and remember query
 * @param string or null to return remembered queries, end with ';' to use DELIMITER
-* @return Min_Result or array($queries, $time) if $query = null
+* @return Result or [$queries, $time] if $query = null
 */
 function queries($query) {
 	global $connection;
@@ -667,7 +675,7 @@ function queries($query) {
 * @param callback
 * @return bool
 */
-function apply_queries($query, $tables, $escape = 'table') {
+function apply_queries($query, $tables, $escape = 'Adminer\table') {
 	foreach ($tables as $table) {
 		if (!queries("$query " . $escape($table))) {
 			return false;
@@ -742,7 +750,8 @@ function get_file($key, $decompress = false) {
 		}
 		$name = $file["name"][$key];
 		$tmp_name = $file["tmp_name"][$key];
-		$content = file_get_contents($decompress && preg_match('~\.gz$~', $name)
+		$content = file_get_contents(
+			$decompress && preg_match('~\.gz$~', $name)
 			? "compress.zlib://$tmp_name"
 			: $tmp_name
 		); //! may not be reachable because of open_basedir
@@ -817,7 +826,7 @@ function format_number($val) {
 */
 function friendly_url($val) {
 	// used for blobs and export
-	return preg_replace('~[^a-z0-9_]~i', '-', $val);
+	return preg_replace('~\W~i', '-', $val);
 }
 
 /** Print hidden fields
@@ -857,12 +866,12 @@ function hidden_fields_get() {
 */
 function table_status1($table, $fast = false) {
 	$return = table_status($table, $fast);
-	return ($return ? $return : array("Name" => $table));
+	return ($return ?: array("Name" => $table));
 }
 
 /** Find out foreign keys for each column
 * @param string
-* @return array array($col => array())
+* @return array [$col => []]
 */
 function column_foreign_keys($table) {
 	global $adminer;
@@ -890,7 +899,7 @@ function enum_input($type, $attrs, $field, $value, $empty = null) {
 	foreach ($matches[1] as $i => $val) {
 		$val = stripcslashes(str_replace("''", "'", $val));
 		$checked = (is_int($value) ? $value == $i+1 : (is_array($value) ? in_array($i+1, $value) : $value === $val));
-		$return .= " <label><input type='$type'$attrs value='" . ($i+1) . "'" . ($checked ? ' checked' : '') . '>' . h($adminer->editVal($val, $field)) . '</label>';
+		$return .= " <label><input type='$type'$attrs value='" . (JUSH == "sql" ? $i+1 : h($val)) . "'" . ($checked ? ' checked' : '') . '>' . h($adminer->editVal($val, $field)) . '</label>';
 	}
 	return $return;
 }
@@ -902,7 +911,7 @@ function enum_input($type, $attrs, $field, $value, $empty = null) {
 * @return null
 */
 function input($field, $value, $function) {
-	global $types, $adminer, $jush;
+	global $driver, $adminer;
 	$name = h(bracket_escape($field["field"]));
 	echo "<td class='function'>";
 	if (is_array($value) && !$function) {
@@ -913,13 +922,18 @@ function input($field, $value, $function) {
 		$value = call_user_func_array('json_encode', $args); //! requires PHP 5.2
 		$function = "json";
 	}
-	$reset = ($jush == "mssql" && $field["auto_increment"]);
+	$reset = (JUSH == "mssql" && $field["auto_increment"]);
 	if ($reset && !$_POST["save"]) {
 		$function = null;
 	}
 	$functions = (isset($_GET["select"]) || $reset ? array("orig" => lang('original')) : array()) + $adminer->editFunctions($field);
 	$disabled = stripos($field["default"], "GENERATED ALWAYS AS ") === 0 ? " disabled=''" : "";
 	$attrs = " name='fields[$name]'$disabled";
+	$enums = $driver->enumLength($field);
+	if ($enums) {
+		$field["type"] = "enum";
+		$field["length"] = $enums;
+	}
 	if ($field["type"] == "enum") {
 		echo h($functions[""]) . "<td>" . $adminer->editInput($_GET["edit"], $field, $attrs, $value);
 	} else {
@@ -946,7 +960,7 @@ function input($field, $value, $function) {
 		} elseif (preg_match('~blob|bytea|raw|file~', $field["type"]) && ini_bool("file_uploads")) {
 			echo "<input type='file' name='fields-$name'>";
 		} elseif (($text = preg_match('~text|lob|memo~i', $field["type"])) || preg_match("~\n~", $value)) {
-			if ($text && $jush != "sqlite") {
+			if ($text && JUSH != "sqlite") {
 				$attrs .= " cols='50' rows='12'";
 			} else {
 				$rows = min(12, substr_count($value, "\n") + 1);
@@ -957,8 +971,12 @@ function input($field, $value, $function) {
 			echo "<textarea$attrs cols='50' rows='12' class='jush-js'>" . h($value) . '</textarea>';
 		} else {
 			// int(3) is only a display hint
-			$maxlength = (!preg_match('~int~', $field["type"]) && preg_match('~^(\d+)(,(\d+))?$~', $field["length"], $match) ? ((preg_match("~binary~", $field["type"]) ? 2 : 1) * $match[1] + ($match[3] ? 1 : 0) + ($match[2] && !$field["unsigned"] ? 1 : 0)) : ($types[$field["type"]] ? $types[$field["type"]] + ($field["unsigned"] ? 0 : 1) : 0));
-			if ($jush == 'sql' && min_version(5.6) && preg_match('~time~', $field["type"])) {
+			$types = $driver->types();
+			$maxlength = (!preg_match('~int~', $field["type"]) && preg_match('~^(\d+)(,(\d+))?$~', $field["length"], $match)
+				? ((preg_match("~binary~", $field["type"]) ? 2 : 1) * $match[1] + ($match[3] ? 1 : 0) + ($match[2] && !$field["unsigned"] ? 1 : 0))
+				: ($types[$field["type"]] ? $types[$field["type"]] + ($field["unsigned"] ? 0 : 1) : 0)
+			);
+			if (JUSH == 'sql' && min_version(5.6) && preg_match('~time~', $field["type"])) {
 				$maxlength += 7; // microtime
 			}
 			// type='date' and type='time' display localized value which may be confusing, type='datetime' uses 'T' as date and time separator
@@ -998,13 +1016,15 @@ function process_input($field) {
 	$idf = bracket_escape($field["field"]);
 	$function = $_POST["function"][$idf];
 	$value = $_POST["fields"][$idf];
-	if ($field["type"] == "enum") {
+	if ($field["type"] == "enum" || $driver->enumLength($field)) {
 		if ($value == -1) {
 			return false;
 		}
 		if ($value == "") {
 			return "NULL";
 		}
+	}
+	if ($field["type"] == "enum") {
 		return +$value;
 	}
 	if ($field["auto_increment"] && $value == "") {
@@ -1054,7 +1074,7 @@ function fields_from_edit() {
 		$name = bracket_escape($key, 1); // 1 - back
 		$return[$name] = array(
 			"field" => $name,
-			"privileges" => array("insert" => 1, "update" => 1),
+			"privileges" => array("insert" => 1, "update" => 1, "where" => 1, "order" => 1),
 			"null" => 1,
 			"auto_increment" => ($key == $driver->primary),
 		);
@@ -1218,7 +1238,7 @@ function select_value($val, $link, $field, $text_length) {
 				. "<td>" . select_value($v, $link, $field, $text_length)
 			;
 		}
-		return "<table cellspacing='0'>$return</table>";
+		return "<table>$return</table>";
 	}
 	if (!$link) {
 		$link = $adminer->selectLink($val, $field);
@@ -1280,9 +1300,8 @@ function is_shortable($field) {
 * @return string
 */
 function count_rows($table, $where, $is_group, $group) {
-	global $jush;
 	$query = " FROM " . table($table) . ($where ? " WHERE " . implode(" AND ", $where) : "");
-	return ($is_group && ($jush == "sql" || count($group) == 1)
+	return ($is_group && (JUSH == "sql" || count($group) == 1)
 		? "SELECT COUNT(DISTINCT " . implode(", ", $group) . ")$query"
 		: "SELECT COUNT(*)" . ($is_group ? " FROM (SELECT 1$query GROUP BY " . implode(", ", $group) . ") x" : $query)
 	);
@@ -1297,7 +1316,8 @@ function slow_query($query) {
 	$db = $adminer->database();
 	$timeout = $adminer->queryTimeout();
 	$slow_query = $driver->slowQuery($query, $timeout);
-	if (!$slow_query && support("kill") && is_object($connection2 = connect()) && ($db == "" || $connection2->select_db($db))) {
+	$connection2 = null;
+	if (!$slow_query && support("kill") && is_object($connection2 = connect($adminer->credentials())) && ($db == "" || $connection2->select_db($db))) {
 		$kill = $connection2->result(connection_id()); // MySQL and MySQLi can use thread_id but it's not in PDO_MySQL
 		?>
 <script<?php echo nonce(); ?>>
@@ -1307,12 +1327,10 @@ var timeout = setTimeout(function () {
 }, <?php echo 1000 * $timeout; ?>);
 </script>
 <?php
-	} else {
-		$connection2 = null;
 	}
 	ob_flush();
 	flush();
-	$return = @get_key_vals(($slow_query ? $slow_query : $query), $connection2, false); // @ - may be killed
+	$return = @get_key_vals(($slow_query ?: $query), $connection2, false); // @ - may be killed
 	if ($connection2) {
 		echo script("clearTimeout(timeout);");
 		ob_flush();
@@ -1392,7 +1410,7 @@ function on_help($command, $side = 0) {
 * @return null
 */
 function edit_form($table, $fields, $row, $update) {
-	global $adminer, $jush, $token, $error;
+	global $adminer, $token, $error;
 	$table_name = $adminer->tableName(table_status1($table, true));
 	page_header(
 		($update ? lang('Edit') : lang('Insert')),
@@ -1408,10 +1426,11 @@ function edit_form($table, $fields, $row, $update) {
 	?>
 <form action="" method="post" enctype="multipart/form-data" id="form">
 <?php
+	$first = 0;
 	if (!$fields) {
 		echo "<p class='error'>" . lang('You have no privileges to update this table.') . "\n";
 	} else {
-		echo "<table cellspacing='0' class='layout'>" . script("qsl('table').onkeydown = editingKeydown;");
+		echo "<table class='layout'>" . script("qsl('table').onkeydown = editingKeydown;");
 		foreach ($fields as $name => $field) {
 			echo "<tr><th>" . $adminer->fieldName($field);
 			$default = $_GET["set"][bracket_escape($name)] ?? null;
@@ -1422,7 +1441,7 @@ function edit_form($table, $fields, $row, $update) {
 				}
 			}
 			$value = ($row !== null
-				? ($row[$name] != "" && $jush == "sql" && preg_match("~enum|set~", $field["type"])
+				? ($row[$name] != "" && JUSH == "sql" && preg_match("~enum|set~", $field["type"])
 					? (is_array($row[$name]) ? array_sum($row[$name]) : +$row[$name])
 					: (is_bool($row[$name]) ? +$row[$name] : $row[$name])
 				)
@@ -1452,6 +1471,9 @@ function edit_form($table, $fields, $row, $update) {
 				$value = "";
 				$function = "uuid";
 			}
+			if ($field["auto_increment"] || $function == "now" || $function == "uuid") {
+				$first++;
+			}
 			input($field, $value, $function);
 			echo "\n";
 		}
@@ -1478,7 +1500,7 @@ function edit_form($table, $fields, $row, $update) {
 		}
 	}
 	echo ($update ? "<input type='submit' name='delete' value='" . lang('Delete') . "'>" . confirm() . "\n"
-		: ($_POST || !$fields ? "" : script("focus(qsa('td', qs('#form'))[1].firstChild);"))
+		: ($_POST || !$fields ? "" : script("focus(qsa('td', qs('#form'))[2*$first+1].firstChild);"))
 	);
 	if (isset($_GET["select"])) {
 		hidden_fields(array("check" => (array) $_POST["check"], "clone" => $_POST["clone"], "all" => $_POST["all"]));

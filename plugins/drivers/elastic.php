@@ -1,13 +1,14 @@
 <?php
+namespace Adminer;
+
 add_driver("elastic", "Elasticsearch 7 (beta)");
 
 if (isset($_GET["elastic"])) {
-	define("DRIVER", "elastic");
+	define('Adminer\DRIVER', "elastic");
 
 	if (ini_bool('allow_url_fopen')) {
-		define("ELASTIC_DB_NAME", "elastic");
 
-		class Min_DB {
+		class Db {
 			var $extension = "JSON", $server_info, $errno, $error, $_url;
 
 			/**
@@ -77,7 +78,7 @@ if (isset($_GET["elastic"])) {
 			 */
 			function connect($server, $username, $password) {
 				preg_match('~^(https?://)?(.*)~', $server, $match);
-				$this->_url = ($match[1] ? $match[1] : "http://") . urlencode($username) . ":" . urlencode($password) . "@$match[2]";
+				$this->_url = ($match[1] ?: "http://") . urlencode($username) . ":" . urlencode($password) . "@$match[2]";
 				$return = $this->query('');
 				if ($return) {
 					$this->server_info = $return['version']['number'];
@@ -94,7 +95,7 @@ if (isset($_GET["elastic"])) {
 			}
 		}
 
-		class Min_Result {
+		class Result {
 			var $num_rows, $_rows;
 
 			function __construct($rows) {
@@ -119,7 +120,22 @@ if (isset($_GET["elastic"])) {
 		}
 	}
 
-	class Min_Driver extends Min_SQL {
+	class Driver extends SqlDriver {
+		static $possibleDrivers = array("json + allow_url_fopen");
+		static $jush = "elastic";
+
+		var $editFunctions = array(array("json"));
+		var $operators = array("=", "must", "should", "must_not");
+
+		function __construct($connection) {
+			parent::__construct($connection);
+			$this->types = array(
+				lang('Numbers') => array("long" => 3, "integer" => 5, "short" => 8, "byte" => 10, "double" => 20, "float" => 66, "half_float" => 12, "scaled_float" => 21),
+				lang('Date and time') => array("date" => 10),
+				lang('Strings') => array("string" => 65535, "text" => 65535),
+				lang('Binary') => array("binary" => 255),
+			);
+		}
 
 		function select($table, $select, $where, $group, $order = array(), $limit = 1, $page = 0, $print = false) {
 			$data = array();
@@ -143,13 +159,21 @@ if (isset($_GET["elastic"])) {
 				}
 			}
 
+			$fields = null;
 			foreach ($where as $val) {
 				if (preg_match('~^\((.+ OR .+)\)$~', $val, $matches)) {
 					$parts = explode(" OR ", $matches[1]);
 					$terms = array();
+
+					if ($fields === null) {
+						$fields = fields($table);
+					}
 					foreach ($parts as $part) {
 						list($col, $op, $val) = explode(" ", $part, 3);
 						$term = array($col => $val);
+						if (isset($fields[$col]) && $fields[$col]['full_type'] == 'boolean' && $val !== 'true' && $val !== 'false') {
+							continue;
+						}
 						if ($op == "=") {
 							$terms[] = array("term" => $term);
 						} elseif (in_array($op, array("must", "should", "must_not"))) {
@@ -204,7 +228,7 @@ if (isset($_GET["elastic"])) {
 				$return[] = $row;
 			}
 
-			return new Min_Result($return);
+			return new Result($return);
 		}
 
 		function update($type, $record, $queryWhere, $limit = 0, $separator = "\n") {
@@ -262,10 +286,10 @@ if (isset($_GET["elastic"])) {
 		}
 	}
 
-	function connect() {
-		$connection = new Min_DB;
+	function connect($credentials) {
+		$connection = new Db;
 
-		list($server, $username, $password) = adminer()->credentials();
+		list($server, $username, $password) = $credentials;
 		if (!preg_match('~^(https?://)?[-a-z\d.]+(:\d+)?$~', $server)) {
 			return lang('Invalid server.');
 		}
@@ -291,7 +315,7 @@ if (isset($_GET["elastic"])) {
 	}
 
 	function get_databases() {
-		return array(ELASTIC_DB_NAME);
+		return array("elastic");
 	}
 
 	function limit($query, $where, $limit, $offset = 0, $separator = " ") {
@@ -312,15 +336,7 @@ if (isset($_GET["elastic"])) {
 
 	function count_tables($databases) {
 		$return = connection()->rootQuery('_aliases');
-		if (empty($return)) {
-			return array(
-				ELASTIC_DB_NAME => 0
-			);
-		}
-
-		return array(
-			ELASTIC_DB_NAME => count($return)
-		);
+		return array("elastic" => ($return ? count($return) : 0));
 	}
 
 	function tables_list() {
@@ -355,10 +371,12 @@ if (isset($_GET["elastic"])) {
 		if ($name != "") {
 			if (isset($stats["indices"][$name])) {
 				return format_index_status($name, $stats["indices"][$name]);
-			} else foreach ($aliases as $index_name => $index) {
-				foreach ($index["aliases"] as $alias_name => $alias) {
-					if ($alias_name == $name) {
-						return format_alias_status($alias_name, $stats["indices"][$index_name]);
+			} else {
+				foreach ($aliases as $index_name => $index) {
+					foreach ($index["aliases"] as $alias_name => $alias) {
+						if ($alias_name == $name) {
+							return format_alias_status($alias_name, $stats["indices"][$index_name]);
+						}
 					}
 				}
 			}
@@ -453,11 +471,6 @@ if (isset($_GET["elastic"])) {
 		);
 
 		foreach ($mappings as $name => $field) {
-			$has_index = !isset($field["index"]) || $field["index"];
-
-			// TODO: privileges: where => $has_index
-			// TODO: privileges: sort => $field["type"] != "text"
-
 			$result[$name] = array(
 				"field" => $name,
 				"full_type" => $field["type"],
@@ -503,22 +516,6 @@ if (isset($_GET["elastic"])) {
 		return null;
 	}
 
-	/** Create index
-	 * @param string
-	 * @return mixed
-	 */
-	function create_database($db) {
-		return connection()->rootQuery(urlencode($db), null, 'PUT');
-	}
-
-	/** Remove index
-	 * @param array
-	 * @return mixed
-	 */
-	function drop_databases($databases) {
-		return connection()->rootQuery(urlencode(implode(',', $databases)), null, 'DELETE');
-	}
-
 	/** Alter type
 	 * @param array
 	 * @return mixed
@@ -527,7 +524,7 @@ if (isset($_GET["elastic"])) {
 		$properties = array();
 		foreach ($fields as $f) {
 			$field_name = trim($f[1][0]);
-			$field_type = trim($f[1][1] ? $f[1][1] : "text");
+			$field_type = trim($f[1][1] ?: "text");
 			$properties[$field_name] = array(
 				'type' => $field_type
 			);
@@ -537,7 +534,7 @@ if (isset($_GET["elastic"])) {
 			$properties = array('properties' => $properties);
 		}
 
-		return connection()->query("_mapping/{$name}", $properties, 'PUT');
+		return connection()->query("_mapping/$name", $properties, 'PUT');
 	}
 
 	/** Drop types
@@ -555,31 +552,5 @@ if (isset($_GET["elastic"])) {
 
 	function last_id() {
 		return connection()->last_id;
-	}
-
-	function driver_config() {
-		$types = array();
-		$structured_types = array();
-
-		foreach (array(
-			lang('Numbers') => array("long" => 3, "integer" => 5, "short" => 8, "byte" => 10, "double" => 20, "float" => 66, "half_float" => 12, "scaled_float" => 21),
-			lang('Date and time') => array("date" => 10),
-			lang('Strings') => array("string" => 65535, "text" => 65535),
-			lang('Binary') => array("binary" => 255),
-		) as $key => $val) {
-			$types += $val;
-			$structured_types[$key] = array_keys($val);
-		}
-
-		return array(
-			'possible_drivers' => array("json + allow_url_fopen"),
-			'jush' => "elastic",
-			'operators' => array("=", "must", "should", "must_not"),
-			'functions' => array(),
-			'grouping' => array(),
-			'edit_functions' => array(array("json")),
-			'types' => $types,
-			'structured_types' => $structured_types,
-		);
 	}
 }

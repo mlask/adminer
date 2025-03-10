@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 class Adminer {
 	var $operators = array("<=", ">=");
 	var $_values = array();
@@ -23,7 +25,7 @@ class Adminer {
 	function bruteForceKey() {
 		return $_SERVER["REMOTE_ADDR"];
 	}
-	
+
 	function serverName($server) {
 	}
 
@@ -32,7 +34,7 @@ class Adminer {
 		if ($connection) {
 			$databases = $this->databases(false);
 			return (!$databases
-				? $connection->result("SELECT SUBSTRING_INDEX(CURRENT_USER, '@', 1)") // username without the database list
+				? get_val("SELECT SUBSTRING_INDEX(CURRENT_USER, '@', 1)") // username without the database list
 				: $databases[(information_schema($databases[0]) ? 1 : 0)] // first available database
 			);
 		}
@@ -71,16 +73,16 @@ class Adminer {
 	}
 
 	function loginForm() {
-		echo "<table cellspacing='0' class='layout'>\n";
+		echo "<table class='layout'>\n";
 		echo $this->loginFormField('username', '<tr><th>' . lang('Username') . '<td>', '<input type="hidden" name="auth[driver]" value="server"><input name="auth[username]" autofocus value="' . h($_GET["username"]) . '" autocomplete="username" autocapitalize="off">');
-		echo $this->loginFormField('password', '<tr><th>' . lang('Password') . '<td>', '<input type="password" name="auth[password]" autocomplete="current-password">' . "\n");
+		echo $this->loginFormField('password', '<tr><th>' . lang('Password') . '<td>', '<input type="password" name="auth[password]" autocomplete="current-password">');
 		echo "</table>\n";
 		echo "<p><input type='submit' value='" . lang('Login') . "'>\n";
 		echo checkbox("auth[permanent]", 1, $_COOKIE["adminer_permanent"], lang('Permanent login')) . "\n";
 	}
 
 	function loginFormField($name, $heading, $value) {
-		return $heading . $value;
+		return $heading . $value . "\n";
 	}
 
 	function login($login, $password) {
@@ -108,12 +110,14 @@ class Adminer {
 
 	function backwardKeys($table, $tableName) {
 		$return = array();
-		foreach (get_rows("SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME
+		foreach (
+			get_rows("SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE TABLE_SCHEMA = " . q($this->database()) . "
 AND REFERENCED_TABLE_SCHEMA = " . q($this->database()) . "
 AND REFERENCED_TABLE_NAME = " . q($table) . "
-ORDER BY ORDINAL_POSITION", null, "") as $row) { //! requires MySQL 5
+ORDER BY ORDINAL_POSITION", null, "") as $row //! requires MySQL 5
+		) {
 			$return[$row["TABLE_NAME"]]["keys"][$row["CONSTRAINT_NAME"]][$row["COLUMN_NAME"]] = $row["REFERENCED_COLUMN_NAME"];
 		}
 		foreach ($return as $key => $val) {
@@ -421,10 +425,11 @@ ORDER BY ORDINAL_POSITION", null, "") as $row) { //! requires MySQL 5
 				$subject = $_POST["email_subject"];
 				$message = $_POST["email_message"];
 				preg_match_all('~\{\$([a-z0-9_]+)\}~i', "$subject.$message", $matches); // allows {$name} in subject or message
-				$rows = get_rows("SELECT DISTINCT $field" . ($matches[1] ? ", " . implode(", ", array_map('idf_escape', array_unique($matches[1]))) : "") . " FROM " . table($_GET["select"])
+				$rows = get_rows(
+					"SELECT DISTINCT $field" . ($matches[1] ? ", " . implode(", ", array_map('Adminer\idf_escape', array_unique($matches[1]))) : "") . " FROM " . table($_GET["select"])
 					. " WHERE $field IS NOT NULL AND $field != ''"
 					. ($where ? " AND " . implode(" AND ", $where) : "")
-					. ($_POST["all"] ? "" : " AND ((" . implode(") OR (", array_map('where_check', (array) $_POST["check"])) . "))")
+					. ($_POST["all"] ? "" : " AND ((" . implode(") OR (", array_map('Adminer\where_check', (array) $_POST["check"])) . "))")
 				);
 				$fields = fields($_GET["select"]);
 				foreach ($this->rowDescriptions($rows, $foreignKeys) as $row) {
@@ -587,6 +592,7 @@ qsl('div').onclick = whisperClick;", "")
 </span>
 </h1>
 <?php
+		switch_lang();
 		if ($missing == "auth") {
 			$first = true;
 			foreach ((array) $_SESSION["pwds"] as $vendor => $servers) {
@@ -646,7 +652,6 @@ qsl('div').onclick = whisperClick;", "")
 	}
 
 	function _foreignKeyOptions($table, $column, $value = null) {
-		global $connection;
 		if (list($target, $id, $name) = $this->_foreignColumn(column_foreign_keys($table), $column)) {
 			$return = &$this->_values[$target];
 			if ($return === null) {
@@ -654,10 +659,9 @@ qsl('div').onclick = whisperClick;", "")
 				$return = ($table_status["Rows"] > 1000 ? "" : array("" => "") + get_key_vals("SELECT $id, $name FROM " . table($target) . " ORDER BY 2"));
 			}
 			if (!$return && $value !== null) {
-				return $connection->result("SELECT $name FROM " . table($target) . " WHERE $id = " . q($value));
+				return get_val("SELECT $name FROM " . table($target) . " WHERE $id = " . q($value));
 			}
 			return $return;
 		}
 	}
-
 }

@@ -1,4 +1,6 @@
 <?php
+namespace Adminer;
+
 $translations = array(
 	'System' => 'System',
 	'Server' => 'Server',
@@ -164,7 +166,7 @@ $translations = array(
 	'Alter indexes' => 'Ændre indekser',
 	'Add next' => 'Læg til næste',
 	'Index Type' => 'Indekstype',
-	'Column (length)' => 'Kolonne (længde)',
+	'length' => 'længde',
 	'Foreign keys' => 'Fremmednøgler',
 	'Foreign key' => 'Fremmednøgle',
 	'Foreign key has been dropped.' => 'Fremmednøglen er slettet.',
