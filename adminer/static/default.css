@@ -99,21 +99,13 @@ a[id^="Db-"], a[id^="Table-"] { display: block; padding: .2em .3em; margin: -.2e
 td[id^="Comment-"] { color: rgba(0, 0, 0, 0.8); }
 
 table[data-title] {
-	position: relative;
-	margin-top: 16px !important;
-	
 	&::before {
-		top: -16px;
-		left: 0;
-		right: -1px;
-		color: #fff;
+		color: #ccc;
 		content: attr(data-title);
-		padding: 0 5px;
-		position: absolute;
+		display: block;
 		font-size: 10px;
-		background: #999;
-		line-height: 16px;
 		font-weight: bold;
+		margin-bottom: 2px;
 	}
 }
 
