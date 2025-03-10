@@ -100,7 +100,7 @@ td[id^="Comment-"] { color: rgba(0, 0, 0, 0.8); }
 
 table[data-title] {
 	&::before {
-		color: #ccc;
+		color: rgba(0, 0, 0, 0.3);
 		content: attr(data-title);
 		display: block;
 		font-size: 10px;
