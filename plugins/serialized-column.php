@@ -10,7 +10,7 @@ class AdminerSerializedColumn
 
 	private function _buildTable ($data)
 	{
-		echo '<table cellspacing="0" style="margin:2px">';
+		echo '<table cellspacing="0" style="margin:2px" data-title="PHP Serialized">';
 		if (is_array($data) && !empty($data))
 		{
 			foreach ($data as $key => $val)

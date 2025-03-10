@@ -16,7 +16,7 @@ class AdminerJsonColumn {
 	}
 
 	private function _buildTable($json) {
-		echo '<table style="margin:2px; font-size:100%;">';
+		echo '<table style="margin:2px; font-size:100%;" data-title="JSON">';
 		foreach ($json as $key => $val) {
 			echo '<tr>';
 			echo '<th>' . Adminer\h($key) . '</th>';

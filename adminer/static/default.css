@@ -98,6 +98,25 @@ code.jush-sql { background: transparent; font-size: 12px; padding: 5px 10px; }
 a[id^="Db-"], a[id^="Table-"] { display: block; padding: .2em .3em; margin: -.2em -.3em; line-height: 1.5em; }
 td[id^="Comment-"] { color: rgba(0, 0, 0, 0.8); }
 
+table[data-title] {
+	position: relative;
+	margin-top: 16px !important;
+	
+	&::before {
+		top: -16px;
+		left: 0;
+		right: -1px;
+		color: #fff;
+		content: attr(data-title);
+		padding: 0 5px;
+		position: absolute;
+		font-size: 10px;
+		background: #999;
+		line-height: 16px;
+		font-weight: bold;
+	}
+}
+
 .rtl h2 { margin: 0 -18px 20px 0; }
 .rtl p, .rtl table, .rtl .error, .rtl .message { margin: 1em 0 0 20px; }
 .rtl .logout { left: 0; right: auto; }
