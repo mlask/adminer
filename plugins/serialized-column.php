@@ -16,7 +16,7 @@ class AdminerSerializedColumn
 			foreach ($data as $key => $val)
 			{
 				echo '<tr>';
-				echo '<th>' . h($key) . '</th>';
+				echo '<th>' . Adminer\h($key) . '</th>';
 				echo '<td>';
 				if (is_scalar($val) || $val === null)
 				{
@@ -30,7 +30,7 @@ class AdminerSerializedColumn
 					}
 					elseif (!is_numeric($val))
 					{
-						$val = '"' . h(addcslashes($val, "\r\n\"")) . '"';
+						$val = '"' . Adminer\h(addcslashes($val, "\r\n\"")) . '"';
 					}
 					echo '<code class="jush-js">' . $val . '</code>';
 				}
