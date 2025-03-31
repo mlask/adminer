@@ -7,3 +7,6 @@
 [submodule "PhpShrink"]
 	path = externals/PhpShrink
 	url = https://github.com/vrana/PhpShrink
+[submodule "externals/PhpShrink"]
+	path = externals/PhpShrink
+	url = https://github.com/vrana/PhpShrink
