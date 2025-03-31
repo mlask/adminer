@@ -10,3 +10,6 @@
 [submodule "externals/PhpShrink"]
 	path = externals/PhpShrink
 	url = https://github.com/vrana/PhpShrink
+[submodule "externals/jush"]
+	path = externals/jush
+	url = https://github.com/vrana/jush
