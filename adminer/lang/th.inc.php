@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'เข้าสู่ระบบ',
 	'Logout successful.' => 'ออกจากระบบเรียบร้อยแล้ว.',
 	'Invalid credentials.' => 'ข้อมูลไม่ถูกต้อง.',
@@ -267,3 +267,5 @@ $translations = array(
 	'Edit all' => 'แก้ไขทั้งหมด',
 	'HH:MM:SS' => 'HH:MM:SS',
 );
+
+// run `php ../../lang.php th` to update this file

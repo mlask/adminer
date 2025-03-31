@@ -7,13 +7,12 @@
 * @license https://www.gnu.org/licenses/gpl-2.0.html GNU General Public License, version 2 (one or other)
 */
 class AdminerLoginServers {
-	/** @access protected */
-	var $servers;
+	protected $servers;
 
 	/** Set supported servers
-	* @param array [$description => ["server" => , "driver" => "server|pgsql|sqlite|..."]]
+	* @param array{server:string, driver:string}[] $servers [$description => ["server" => , "driver" => "server|pgsql|sqlite|..."]]
 	*/
-	function __construct($servers) {
+	function __construct(array $servers) {
 		$this->servers = $servers;
 		if ($_POST["auth"]) {
 			$key = $_POST["auth"]["server"];

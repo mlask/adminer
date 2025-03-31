@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	// label for database system selection (MySQL, SQLite, ...)
 	'System' => 'Система Бази Даних',
 	'Server' => 'Сервер',
@@ -345,3 +345,5 @@ $translations = array(
 	'Unknown error.' => 'Невідома помилка.',
 	'Database does not support password.' => 'База даних не підтримує пароль.',
 );
+
+// run `php ../../lang.php uk` to update this file

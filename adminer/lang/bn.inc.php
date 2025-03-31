@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'লগইন',
 	'Logout successful.' => 'সফলভাবে লগআউট হয়েছে।',
 	'Invalid credentials.' => 'ভুল পাসওয়ার্ড।',
@@ -266,3 +266,5 @@ $translations = array(
 	'Edit all' => 'সবগুলো সম্পাদনা করুন',
 	'HH:MM:SS' => 'HH:MM:SS',
 );
+
+// run `php ../../lang.php bn` to update this file

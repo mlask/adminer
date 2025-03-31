@@ -5,6 +5,11 @@
  * @version  02/18/2014
  */
 
+html {
+	--bg: #F9F9F9;
+	--fg: #333;
+}
+
 body {
 margin: 0;
 font-size: 12px;
@@ -112,7 +117,7 @@ border-bottom: 1px #BBB solid;
 thead tr:hover td, thead tr:hover th {
 background-color: #DDD !important;
 }
-tr:nth-child(2n) td, tr:nth-child(2n) th, .odd td, .odd th, tr.odd {
+tr:nth-child(2n) td, tr:nth-child(2n) th {
 background-color: #F1F1F1;
 }
 tr:hover td, tr:hover th {

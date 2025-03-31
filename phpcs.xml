@@ -12,8 +12,6 @@
 	<rule ref="PSR12">
 		<exclude name="Generic.Whitespace.DisallowTabIndent"/><!-- Replaced by: Generic.Whitespace.DisallowSpaceIndent -->
 		<exclude name="PSR1.Files.SideEffects.FoundWithSymbols"/>
-		<exclude name="PSR12.Operators.OperatorSpacing.NoSpaceBefore"/>
-		<exclude name="PSR12.Operators.OperatorSpacing.NoSpaceAfter"/>
 		<exclude name="PSR1.Classes.ClassDeclaration.MultipleClasses"/>
 		<exclude name="PSR2.Classes.ClassDeclaration.OpenBraceNewLine"/><!-- Replaced by: Generic.Classes.OpeningBraceSameLine -->
 		<exclude name="PSR2.Classes.PropertyDeclaration.Underscore"/>
@@ -24,18 +22,27 @@
 		<!-- More readable. -->
 		<exclude name="PSR12.Files.FileHeader.SpacingAfterBlock"/>
 		<exclude name="PSR12.Classes.OpeningBraceSpace.Found"/>
+		<exclude name="PSR12.Operators.OperatorSpacing.NoSpaceBefore"/>
+		<exclude name="PSR12.Operators.OperatorSpacing.NoSpaceAfter"/>
 		<exclude name="Squiz.WhiteSpace.ControlStructureSpacing.SpacingBeforeClose"/>
 
 		<!-- Saves bytes. -->
 		<exclude name="PSR2.Classes.PropertyDeclaration.Multiple"/>
-		<exclude name="PSR2.Classes.PropertyDeclaration.VarUsed"/>
 		<exclude name="PSR2.Classes.PropertyDeclaration.ScopeMissing"/>
 		<exclude name="PSR12.Classes.ClassInstantiation.MissingParentheses"/>
 		<exclude name="Squiz.Scope.MethodScope.Missing"/>
 
-		<!-- TODO: Ignore only in <?php if () { ?><?php } ?> -->
+		<!-- False positives. -->
 		<exclude name="Generic.WhiteSpace.ScopeIndent.Incorrect"/>
 		<exclude name="Generic.WhiteSpace.ScopeIndent.IncorrectExact"/>
+	</rule>
+
+	<rule ref="Generic.WhiteSpace.ScopeIndent">
+		<properties>
+			<property name="ignoreIndentationTokens" type="array">
+				<element value="T_OPEN_TAG"/>
+			</property>
+		</properties>
 	</rule>
 
 	<rule ref="PSR1.Methods.CamelCapsMethodName.NotCamelCaps">
@@ -46,7 +53,7 @@
 
 	<rule ref="Generic.Files.LineLength">
 		<properties>
-			<property name="lineLimit" value="310"/>
+			<property name="lineLimit" value="250"/>
 		</properties>
 		<exclude-pattern>adminer/lang/</exclude-pattern>
 	</rule>
@@ -79,4 +86,51 @@
 	<rule ref="Generic.VersionControl.GitMergeConflict"/>
 	<rule ref="Generic.Whitespace.DisallowSpaceIndent"/>
 	<rule ref="Generic.WhiteSpace.LanguageConstructSpacing"/>
+
+	<rule ref="Squiz.Arrays.ArrayBracketSpacing"/>
+	<rule ref="Squiz.Classes.LowercaseClassKeywords"/>
+	<rule ref="Squiz.Classes.SelfMemberReference"/>
+	<rule ref="Squiz.CSS.ClassDefinitionNameSpacing"/>
+	<rule ref="Squiz.CSS.ColonSpacing"/>
+	<rule ref="Squiz.CSS.DuplicateClassDefinition"/>
+	<rule ref="Squiz.CSS.DuplicateStyleDefinition"/>
+	<rule ref="Squiz.CSS.EmptyClassDefinition"/>
+	<rule ref="Squiz.CSS.EmptyStyleDefinition"/>
+	<rule ref="Squiz.CSS.ForbiddenStyles"/>
+	<rule ref="Squiz.CSS.Indentation"/>
+	<rule ref="Squiz.CSS.MissingColon"/>
+	<rule ref="Squiz.CSS.Opacity"/>
+	<rule ref="Squiz.CSS.SemicolonSpacing"/>
+	<rule ref="Squiz.Functions.FunctionDuplicateArgument"/>
+	<rule ref="Squiz.Objects.ObjectMemberComma"/>
+	<rule ref="Squiz.Operators.IncrementDecrementUsage"/>
+	<rule ref="Squiz.Operators.ValidLogicalOperators"/>
+	<rule ref="Squiz.PHP.DiscouragedFunctions"/>
+	<rule ref="Squiz.PHP.Eval"/>
+	<rule ref="Squiz.PHP.Heredoc"/>
+	<rule ref="Squiz.PHP.InnerFunctions"/>
+	<rule ref="Squiz.PHP.LowercasePHPFunctions"/>
+	<rule ref="Squiz.PHP.NonExecutableCode"/>
+	<rule ref="Squiz.Scope.StaticThisUsage"/>
+	<rule ref="Squiz.WhiteSpace.FunctionOpeningBraceSpace"/>
+	<rule ref="Squiz.WhiteSpace.LanguageConstructSpacing"/>
+	<rule ref="Squiz.WhiteSpace.LogicalOperatorSpacing"/>
+	<rule ref="Squiz.WhiteSpace.ObjectOperatorSpacing"/>
+
+	<!--
+	This is slow and has false positives but it's useful occasionally.
+	https://github.com/PHPCompatibility/PHPCompatibility
+	<rule ref="PHPCompatibility"/>
+	<config name="testVersion" value="5.3-"/>
+	<rule ref="PHPCompatibility.Extensions.RemovedExtensions">
+		<exclude name="PHPCompatibility.Extensions.RemovedExtensions.mysql_DeprecatedRemoved"/>
+		<exclude name="PHPCompatibility.Extensions.RemovedExtensions.ibaseRemoved"/>
+	</rule>
+	<rule ref="PHPCompatibility.Constants.RemovedConstants">
+		<exclude-pattern>adminer/plugins/drivers/firebird.php</exclude-pattern>
+	</rule>
+	<rule ref="PHPCompatibility.FunctionUse.RemovedFunctions">
+		<exclude-pattern>adminer/plugins/drivers/firebird.php</exclude-pattern>
+	</rule>
+	-->
 </ruleset>

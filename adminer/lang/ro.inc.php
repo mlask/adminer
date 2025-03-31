@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'Intră',
 	'Logout successful.' => 'Ați ieșit cu succes.',
 	'Invalid credentials.' => 'Numele de utilizator sau parola este greșită.',
@@ -267,3 +267,5 @@ $translations = array(
 	'Edit all' => 'Editează tot',
 	'HH:MM:SS' => 'HH:MM:SS',
 );
+
+// run `php ../../lang.php ro` to update this file

@@ -7,16 +7,13 @@
 * @license https://www.gnu.org/licenses/gpl-2.0.html GNU General Public License, version 2 (one or other)
 */
 class AdminerLoginIp {
-	/** @access protected */
-	var $ips;
-	/** @access protected */
-	var $forwarded_for;
+	protected $ips, $forwarded_for;
 
 	/** Set allowed IP addresses
-	* @param array IP address prefixes
-	* @param array X-Forwarded-For prefixes if IP address matches, empty array means anything
+	* @param list<string> $ips IP address prefixes
+	* @param list<string> $forwarded_for X-Forwarded-For prefixes if IP address matches, empty array means anything
 	*/
-	function __construct($ips, $forwarded_for = array()) {
+	function __construct(array $ips, array $forwarded_for = array()) {
 		$this->ips = $ips;
 		$this->forwarded_for= $forwarded_for;
 	}

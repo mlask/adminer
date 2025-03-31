@@ -1,6 +1,6 @@
 <?php
 
-/** Exports one database (e.g. development) so that it can be synced with other database (e.g. production)
+/** Export one database (e.g. development) so that it can be synced with other database (e.g. production)
 * @link https://www.adminer.org/plugins/#use
 * @author Jakub Vrana, https://www.vrana.cz/
 * @license https://www.apache.org/licenses/LICENSE-2.0 Apache License, Version 2.0
@@ -14,7 +14,7 @@ class AdminerDumpAlter {
 		}
 	}
 
-	function _database() {
+	private function dumpAlter() {
 		// drop old tables
 		$query = "SELECT TABLE_NAME, ENGINE, TABLE_COLLATION, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()";
 		echo "DELIMITER ;;
@@ -59,9 +59,8 @@ SELECT @adminer_alter;
 			if ($first) {
 				$first = false;
 				echo "SET @adminer_alter = '';\n\n";
-				register_shutdown_function(array($this, '_database'));
 			} else {
-				$this->_database();
+				$this->dumpAlter();
 			}
 			return true;
 		}
@@ -75,7 +74,10 @@ SELECT @adminer_alter;
 			} else {
 				echo substr_replace($create, " IF NOT EXISTS", 12, 0) . ";\n\n";
 				// create procedure which iterates over original columns and adds new and removes old
-				$query = "SELECT COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, COLLATION_NAME, COLUMN_TYPE, EXTRA, COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = " . Adminer\q($table) . " ORDER BY ORDINAL_POSITION";
+				$query = "SELECT COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, COLLATION_NAME, COLUMN_TYPE, EXTRA, COLUMN_COMMENT
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = " . Adminer\q($table) . "
+ORDER BY ORDINAL_POSITION";
 				echo "DELIMITER ;;
 CREATE PROCEDURE adminer_alter (INOUT alter_command text) BEGIN
 	DECLARE _column_name, _collation_name, after varchar(64) DEFAULT '';
@@ -157,6 +159,12 @@ DROP PROCEDURE adminer_alter;
 	function dumpData() {
 		if ($_POST["format"] == "sql_alter") {
 			return true;
+		}
+	}
+
+	function dumpFooter() {
+		if ($_POST["format"] == "sql_alter") {
+			$this->dumpAlter();
 		}
 	}
 }

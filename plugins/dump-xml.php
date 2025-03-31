@@ -7,8 +7,7 @@
 * @license https://www.gnu.org/licenses/gpl-2.0.html GNU General Public License, version 2 (one or other)
 */
 class AdminerDumpXml {
-	/** @access protected */
-	var $database = false;
+	protected $database = false;
 
 	function dumpFormat() {
 		return array('xml' => 'XML');
@@ -20,19 +19,13 @@ class AdminerDumpXml {
 		}
 	}
 
-	function _database() {
-		echo "</database>\n";
-	}
-
 	function dumpData($table, $style, $query) {
 		if ($_POST["format"] == "xml") {
 			if (!$this->database) {
 				$this->database = true;
 				echo "<database name='" . Adminer\h(Adminer\DB) . "'>\n";
-				register_shutdown_function(array($this, '_database'));
 			}
-			$connection = Adminer\connection();
-			$result = $connection->query($query, 1);
+			$result = Adminer\connection()->query($query, 1);
 			if ($result) {
 				while ($row = $result->fetch_assoc()) {
 					echo "\t<table name='" . Adminer\h($table) . "'>\n";
@@ -50,6 +43,12 @@ class AdminerDumpXml {
 		if ($_POST["format"] == "xml") {
 			header("Content-Type: text/xml; charset=utf-8");
 			return "xml";
+		}
+	}
+
+	function dumpFooter() {
+		if ($_POST["format"] == "xml" && $this->database) {
+			echo "</database>\n";
 		}
 	}
 }

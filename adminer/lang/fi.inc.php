@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	// label for database system selection (MySQL, SQLite, ...)
 	'System' => 'Järjestelmä',
 	'Server' => 'Palvelin',
@@ -349,3 +349,5 @@ $translations = array(
 	'Database does not support password.' => 'Tietokanta ei tue salasanaa.',
 	'Disable %s or enable %s or %s extensions.' => 'Poista käytöstä %s tai ota käyttöön laajennus %s tai %s.',
 );
+
+// run `php ../../lang.php fi` to update this file

@@ -8,24 +8,25 @@ if (isset($_GET["elastic"])) {
 
 	if (ini_bool('allow_url_fopen')) {
 
-		class Db {
-			var $extension = "JSON", $server_info, $errno, $error, $_url;
+		class Db extends SqlDb {
+			public string $extension = "JSON";
+			private $url;
 
 			/**
-			 * @param string $path
-			 * @param array|null $content
-			 * @param string $method
 			 * @return array|false
 			 */
-			function rootQuery($path, array $content = null, $method = 'GET') {
-				$file = @file_get_contents("$this->_url/" . ltrim($path, '/'), false, stream_context_create(array('http' => array(
-					'method' => $method,
-					'content' => $content !== null ? json_encode($content) : null,
-					'header' => $content !== null ? 'Content-Type: application/json' : array(),
-					'ignore_errors' => 1,
-					'follow_location' => 0,
-					'max_redirects' => 0,
-				))));
+			function rootQuery(string $path, ?array $content = null, string $method = 'GET') {
+				$file = @file_get_contents("$this->url/" . ltrim($path, '/'), false, stream_context_create(array(
+					//~ 'ssl' => array('verify_peer' => false), // Elasticsearch responses in over 4 s on https://localhost:9200 without this line for me
+					'http' => array(
+						'method' => $method,
+						'content' => $content !== null ? json_encode($content) : null,
+						'header' => $content !== null ? 'Content-Type: application/json' : array(),
+						'ignore_errors' => 1,
+						'follow_location' => 0,
+						'max_redirects' => 0,
+					),
+				)));
 
 				if ($file === false) {
 					$this->error = lang('Invalid server or credentials.');
@@ -51,83 +52,75 @@ if (isset($_GET["elastic"])) {
 				return $return;
 			}
 
-			/** Performs query relative to actual selected DB
-			 * @param string $path
-			 * @param array|null $content
-			 * @param string $method
-			 * @return array|false
-			 */
-			function query($path, array $content = null, $method = 'GET') {
+			/** Perform query relative to actual selected DB */
+			function query(string $query, bool $unbuffered = false) {
 				// Support for global search through all tables
-				if ($path != "" && $path[0] == "S" && preg_match('/SELECT 1 FROM ([^ ]+) WHERE (.+) LIMIT ([0-9]+)/', $path, $matches)) {
-					$driver = get_driver();
-
+				if ($query[0] == "S" && preg_match('/SELECT 1 FROM ([^ ]+) WHERE (.+) LIMIT ([0-9]+)/', $query, $matches)) {
 					$where = explode(" AND ", $matches[2]);
-
-					return $driver->select($matches[1], array("*"), $where, null, array(), $matches[3]);
+					return driver()->select($matches[1], array("*"), $where, array(), array(), $matches[3]);
 				}
-
-				return $this->rootQuery($path, $content, $method);
 			}
 
-			/**
-			 * @param string $server
-			 * @param string $username
-			 * @param string $password
-			 * @return bool
-			 */
-			function connect($server, $username, $password) {
+			function attach(?string $server, string $username, string $password): string {
 				preg_match('~^(https?://)?(.*)~', $server, $match);
-				$this->_url = ($match[1] ?: "http://") . urlencode($username) . ":" . urlencode($password) . "@$match[2]";
-				$return = $this->query('');
+				$this->url = ($match[1] ?: "http://") . urlencode($username) . ":" . urlencode($password) . "@$match[2]";
+				$return = $this->rootQuery('');
 				if ($return) {
 					$this->server_info = $return['version']['number'];
 				}
-				return (bool) $return;
+				return ($return ? '' : $this->error);
 			}
 
-			function select_db($database) {
+			function select_db(string $database): bool {
 				return true;
 			}
 
-			function quote($string) {
+			function quote(string $string): string {
 				return $string;
 			}
 		}
 
 		class Result {
-			var $num_rows, $_rows;
+			public $num_rows;
+			private $rows;
 
 			function __construct($rows) {
 				$this->num_rows = count($rows);
-				$this->_rows = $rows;
-
-				reset($this->_rows);
+				$this->rows = $rows;
+				reset($this->rows);
 			}
 
 			function fetch_assoc() {
-				$return = current($this->_rows);
-				next($this->_rows);
-
+				$return = current($this->rows);
+				next($this->rows);
 				return $return;
 			}
 
 			function fetch_row() {
 				$row = $this->fetch_assoc();
-
 				return $row ? array_values($row) : false;
 			}
 		}
 	}
 
 	class Driver extends SqlDriver {
-		static $possibleDrivers = array("json + allow_url_fopen");
-		static $jush = "elastic";
+		static array $extensions = array("json + allow_url_fopen");
+		static string $jush = "elastic";
 
-		var $editFunctions = array(array("json"));
-		var $operators = array("=", "must", "should", "must_not");
+		public array $insertFunctions = array("json");
+		public array $operators = array("=", "must", "should", "must_not");
 
-		function __construct($connection) {
+		static function connect(?string $server, string $username, string $password) {
+			if (!preg_match('~^(https?://)?[-a-z\d.]+(:\d+)?$~', $server)) {
+				return lang('Invalid server.');
+			}
+			if ($password != "" && is_object(parent::connect($server, $username, ""))) {
+				return lang('Database does not support password.');
+			}
+			return parent::connect($server, $username, $password);
+		}
+
+		function __construct(Db $connection) {
 			parent::__construct($connection);
 			$this->types = array(
 				lang('Numbers') => array("long" => 3, "integer" => 5, "short" => 8, "byte" => 10, "double" => 20, "float" => 66, "half_float" => 12, "scaled_float" => 21),
@@ -137,7 +130,7 @@ if (isset($_GET["elastic"])) {
 			);
 		}
 
-		function select($table, $select, $where, $group, $order = array(), $limit = 1, $page = 0, $print = false) {
+		function select(string $table, array $select, array $where, array $group, array $order = array(), $limit = 1, ?int $page = 0, bool $print = false) {
 			$data = array();
 			if ($select != array("*")) {
 				$data["fields"] = array_values($select);
@@ -153,7 +146,7 @@ if (isset($_GET["elastic"])) {
 			}
 
 			if ($limit) {
-				$data["size"] = +$limit;
+				$data["size"] = $limit;
 				if ($page) {
 					$data["from"] = ($page * $limit);
 				}
@@ -197,7 +190,7 @@ if (isset($_GET["elastic"])) {
 
 			$query = "$table/_search";
 			$start = microtime(true);
-			$search = $this->_conn->rootQuery($query, $data);
+			$search = $this->conn->rootQuery($query, $data);
 
 			if ($print) {
 				echo adminer()->selectQuery("$query: " . json_encode($data), $start, !$search);
@@ -205,6 +198,7 @@ if (isset($_GET["elastic"])) {
 			if (empty($search)) {
 				return false;
 			}
+			$tableFields = ($select == array("*") ? array_keys(fields($table)) : array());
 
 			$return = array();
 			foreach ($search["hits"]["hits"] as $hit) {
@@ -219,7 +213,9 @@ if (isset($_GET["elastic"])) {
 						$fields[$key] = $key == "_id" ? $hit["_id"] : $hit["_source"][$key];
 					}
 				} else {
-					$fields = $hit["_source"];
+					foreach ($tableFields as $key) {
+						$fields[$key] = $key == "_id" ? $hit["_id"] : $hit["_source"][$key];
+					}
 				}
 				foreach ($fields as $key => $val) {
 					$row[$key] = (is_array($val) ? json_encode($val) : $val);
@@ -231,32 +227,43 @@ if (isset($_GET["elastic"])) {
 			return new Result($return);
 		}
 
-		function update($type, $record, $queryWhere, $limit = 0, $separator = "\n") {
+		function update(string $table, array $set, string $queryWhere, int $limit = 0, string $separator = "\n") {
 			//! use $limit
 			$parts = preg_split('~ *= *~', $queryWhere);
 			if (count($parts) == 2) {
 				$id = trim($parts[1]);
-				$query = "$type/$id";
-
-				return $this->_conn->query($query, $record, 'POST');
+				$query = "$table/_update/$id";
+				$this->conn->affected_rows = 0;
+				return $this->conn->rootQuery($query, array('doc' => $set), 'POST');
 			}
 
 			return false;
 		}
 
-		function insert($type, $record) {
-			$id = ""; //! user should be able to inform _id
-			$query = "$type/$id";
-			$response = $this->_conn->query($query, $record, 'POST');
-			$this->_conn->last_id = $response['_id'];
+		function insert(string $type, array $record) {
+			$query = "$type/_doc/";
+			if (isset($record["_id"]) && $record["_id"] != "NULL") {
+				$query .= $record["_id"];
+				unset($record["_id"]);
+			}
+			foreach ($record as $key => $value) {
+				if ($value == "NULL") {
+					unset($record[$key]);
+				}
+			}
+			$response = $this->conn->rootQuery($query, $record, 'POST');
+			if ($response == false) {
+				return false;
+			}
+			$this->conn->last_id = $response['_id'];
 
-			return $response['created'];
+			return $response['result'];
 		}
 
-		function delete($table, $queryWhere, $limit = 0) {
+		function delete(string $table, string $queryWhere, int $limit = 0) {
 			//! use $limit
 			$ids = array();
-			if (isset($_GET["where"]["_id"]) && $_GET["where"]["_id"]) {
+			if (idx($_GET["where"], "_id")) {
 				$ids[] = $_GET["where"]["_id"];
 			}
 			if (isset($_POST['check'])) {
@@ -268,40 +275,22 @@ if (isset($_GET["elastic"])) {
 				}
 			}
 
-			$this->_conn->affected_rows = 0;
+			$this->conn->affected_rows = 0;
 
 			foreach ($ids as $id) {
 				$query = "$table/_doc/$id";
-				$response = $this->_conn->query($query, null, 'DELETE');
+				$response = $this->conn->rootQuery($query, null, 'DELETE');
 				if (isset($response['result']) && $response['result'] == 'deleted') {
-					$this->_conn->affected_rows++;
+					$this->conn->affected_rows++;
 				}
 			}
 
-			return $this->_conn->affected_rows;
+			return !!$this->conn->affected_rows;
 		}
 
-		function convertOperator($operator) {
+		function convertOperator(string $operator): string {
 			return $operator == "LIKE %%" ? "should" : $operator;
 		}
-	}
-
-	function connect($credentials) {
-		$connection = new Db;
-
-		list($server, $username, $password) = $credentials;
-		if (!preg_match('~^(https?://)?[-a-z\d.]+(:\d+)?$~', $server)) {
-			return lang('Invalid server.');
-		}
-		if ($password != "" && $connection->connect($server, $username, "")) {
-			return lang('Database does not support password.');
-		}
-
-		if ($connection->connect($server, $username, $password)) {
-			return $connection;
-		}
-
-		return $connection->error;
 	}
 
 	function support($feature) {
@@ -314,12 +303,12 @@ if (isset($_GET["elastic"])) {
 		return $credentials[1];
 	}
 
-	function get_databases() {
+	function get_databases($flush) {
 		return array("elastic");
 	}
 
 	function limit($query, $where, $limit, $offset = 0, $separator = " ") {
-		return " $query$where" . ($limit !== null ? $separator . "LIMIT $limit" . ($offset ? " OFFSET $offset" : "") : "");
+		return " $query$where" . ($limit ? $separator . "LIMIT $limit" . ($offset ? " OFFSET $offset" : "") : "");
 	}
 
 	function collations() {
@@ -328,10 +317,6 @@ if (isset($_GET["elastic"])) {
 
 	function db_collation($db, $collations) {
 		//
-	}
-
-	function engines() {
-		return array();
 	}
 
 	function count_tables($databases) {
@@ -370,16 +355,17 @@ if (isset($_GET["elastic"])) {
 
 		if ($name != "") {
 			if (isset($stats["indices"][$name])) {
-				return format_index_status($name, $stats["indices"][$name]);
+				return array(format_index_status($name, $stats["indices"][$name]));
 			} else {
 				foreach ($aliases as $index_name => $index) {
 					foreach ($index["aliases"] as $alias_name => $alias) {
 						if ($alias_name == $name) {
-							return format_alias_status($alias_name, $stats["indices"][$index_name]);
+							return array(format_alias_status($alias_name, $stats["indices"][$index_name]));
 						}
 					}
 				}
 			}
+			return array();
 		}
 
 		ksort($stats["indices"]);
@@ -430,7 +416,7 @@ if (isset($_GET["elastic"])) {
 		return h(connection()->error);
 	}
 
-	function information_schema() {
+	function information_schema($db) {
 		//
 	}
 
@@ -466,6 +452,7 @@ if (isset($_GET["elastic"])) {
 				"field" => "_id",
 				"full_type" => "text",
 				"type" => "text",
+				"null" => true,
 				"privileges" => array("insert" => 1, "select" => 1, "where" => 1, "order" => 1),
 			)
 		);
@@ -475,6 +462,7 @@ if (isset($_GET["elastic"])) {
 				"field" => $name,
 				"full_type" => $field["type"],
 				"type" => $field["type"],
+				"null" => true,
 				"privileges" => array(
 					"insert" => 1,
 					"select" => 1,
@@ -513,44 +501,51 @@ if (isset($_GET["elastic"])) {
 	}
 
 	function found_rows($table_status, $where) {
-		return null;
+	}
+
+	function auto_increment(): string {
+		return '';
 	}
 
 	/** Alter type
-	 * @param array
 	 * @return mixed
 	 */
-	function alter_table($table, $name, $fields, $foreign, $comment, $engine, $collation, $auto_increment, $partitioning) {
+	function alter_table(string $table, $name, $fields, $foreign, $comment, $engine, $collation, $auto_increment, $partitioning) {
 		$properties = array();
 		foreach ($fields as $f) {
-			$field_name = trim($f[1][0]);
-			$field_type = trim($f[1][1] ?: "text");
-			$properties[$field_name] = array(
-				'type' => $field_type
-			);
+			if ($f[1]) {
+				$field_name = trim($f[1][0]);
+				$field_type = trim($f[1][1] ?: "text");
+				$properties[$field_name] = array(
+					'type' => $field_type
+				);
+			}
 		}
 
 		if (!empty($properties)) {
 			$properties = array('properties' => $properties);
 		}
 
-		return connection()->query("_mapping/$name", $properties, 'PUT');
+		if ($table != '') {
+			return connection()->rootQuery("$name/_mapping", $properties, 'POST');
+		} else {
+			return connection()->rootQuery($name, array('mappings' => $properties), 'PUT');
+		}
 	}
 
 	/** Drop types
-	 * @param array
-	 * @return bool
+	 * @param list<string> $tables
 	 */
-	function drop_tables($tables) {
+	function drop_tables(array $tables): bool {
 		$return = true;
 		foreach ($tables as $table) { //! convert to bulk api
-			$return = $return && connection()->query(urlencode($table), null, 'DELETE');
+			$return = $return && connection()->rootQuery(urlencode($table), null, 'DELETE');
 		}
 
 		return $return;
 	}
 
-	function last_id() {
+	function last_id($result) {
 		return connection()->last_id;
 	}
 }

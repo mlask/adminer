@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'Belépés',
 	'Logout successful.' => 'Sikeres kilépés.',
 	'Invalid credentials.' => 'Érvénytelen adatok.',
@@ -266,3 +266,5 @@ $translations = array(
 	'Edit all' => 'Összes szerkesztése',
 	'HH:MM:SS' => 'óó:pp:mm',
 );
+
+// run `php ../../lang.php hu` to update this file

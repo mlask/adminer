@@ -6,8 +6,7 @@
 * @license https://www.gnu.org/licenses/gpl-2.0.html GNU General Public License, version 2 (one or other)
 */
 class AdminerDumpPhp {
-	var $output = array();
-	var $shutdown_callback = false;
+	protected $output = array();
 
 	function dumpFormat() {
 		return array('php' => 'PHP');
@@ -23,18 +22,13 @@ class AdminerDumpPhp {
 	function dumpTable($table, $style, $is_view = 0) {
 		if ($_POST['format'] == 'php') {
 			$this->output[$table] = array();
-			if (!$this->shutdown_callback) {
-				$this->shutdown_callback = true;
-				register_shutdown_function(array($this, '_export'));
-			}
 			return true;
 		}
 	}
 
 	function dumpData($table, $style, $query) {
 		if ($_POST['format'] == 'php') {
-			$connection = Adminer\connection();
-			$result = $connection->query($query, 1);
+			$result = Adminer\connection()->query($query, 1);
 			if ($result) {
 				while ($row = $result->fetch_assoc()) {
 					$this->output[$table][] = $row;
@@ -44,8 +38,11 @@ class AdminerDumpPhp {
 		}
 	}
 
-	function _export() {
-		echo "<?php\n";
-		var_export($this->output);
+	function dumpFooter() {
+		if ($_POST['format'] == 'php') {
+			echo "<?php\n";
+			var_export($this->output);
+			echo ";\n";
+		}
 	}
 }

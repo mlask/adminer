@@ -8,7 +8,13 @@ if (isset($_GET["import"])) {
 	$_GET["sql"] = $_GET["import"];
 }
 
-if (!(DB != "" ? $connection->select_db(DB) : isset($_GET["sql"]) || isset($_GET["dump"]) || isset($_GET["database"]) || isset($_GET["processlist"]) || isset($_GET["privileges"]) || isset($_GET["user"]) || isset($_GET["variables"]) || $_GET["script"] == "connect" || $_GET["script"] == "kill")) {
+if (
+	!(DB != ""
+		? connection()->select_db(DB)
+		: isset($_GET["sql"]) || isset($_GET["dump"]) || isset($_GET["database"]) || isset($_GET["processlist"]) || isset($_GET["privileges"]) || isset($_GET["user"]) || isset($_GET["variables"])
+			|| $_GET["script"] == "connect" || $_GET["script"] == "kill"
+	)
+) {
 	if (DB != "" || $_GET["refresh"]) {
 		restart_session();
 		set_session("dbs", null);
@@ -36,9 +42,17 @@ if (!(DB != "" ? $connection->select_db(DB) : isset($_GET["sql"]) || isset($_GET
 				echo "<a href='" . h(ME) . "$key='>$val</a>\n";
 			}
 		}
-		echo "<p>" . lang('%s version: %s through PHP extension %s', $drivers[DRIVER], "<b>" . h($connection->server_info) . "</b>", "<b>$connection->extension</b>") . "\n";
+		echo "<p>" . lang('%s version: %s through PHP extension %s', get_driver(DRIVER), "<b>" . h(connection()->server_info) . "</b>", "<b>" . connection()->extension . "</b>") . "\n";
 		echo "<p>" . lang('Logged as: %s', "<b>" . h(logged_user()) . "</b>") . "\n";
-		$databases = $adminer->databases();
+		if (isset(adminer()->plugins) && is_array(adminer()->plugins)) {
+			echo "<p>" . lang('Loaded plugins') . ":\n<ul>\n";
+			foreach (adminer()->plugins as $plugin) {
+				$reflection = new \ReflectionObject($plugin);
+				echo "<li><b>" . get_class($plugin) . "</b>" . h(preg_match('~^/[\s*]+(.+)~', $reflection->getDocComment(), $match) ? ": $match[1]" : "") . "\n";
+			}
+			echo "</ul>\n";
+		}
+		$databases = adminer()->databases();
 		if ($databases) {
 			$scheme = support("scheme");
 			$collations = collations();
@@ -72,13 +86,13 @@ if (!(DB != "" ? $connection->select_db(DB) : isset($_GET["sql"]) || isset($_GET
 			echo (support("database")
 				? "<div class='footer'><div>\n"
 					. "<fieldset><legend>" . lang('Selected') . " <span id='selected'></span></legend><div>\n"
-					. "<input type='hidden' name='all' value=''>" . script("qsl('input').onclick = function () { selectCount('selected', formChecked(this, /^db/)); };") // used by trCheck()
+					. input_hidden("all") . script("qsl('input').onclick = function () { selectCount('selected', formChecked(this, /^db/)); };") // used by trCheck()
 					. "<input type='submit' name='drop' value='" . lang('Drop') . "'>" . confirm() . "\n"
 					. "</div></fieldset>\n"
 					. "</div></div>\n"
 				: ""
 			);
-			echo "<input type='hidden' name='token' value='$token'>\n";
+			echo input_token();
 			echo "</form>\n";
 			echo script("tableCheck();");
 		}

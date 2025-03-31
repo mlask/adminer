@@ -15,6 +15,10 @@
 /*! normalize.css v4.2.0 | MIT License | github.com/necolas/normalize.css */
 
 html {
+	--bg: #eef0f0;
+}
+
+html {
 	font-family: sans-serif;
 	line-height: 1.15;
 	-ms-text-size-adjust: 100%;
@@ -363,6 +367,10 @@ tbody tr:hover td, tbody tr:hover th {
 	background: #edf4ff
 }
 
+thead {
+	top: 34px;
+}
+
 thead td, thead th {
 	text-align: center;
 	vertical-align: middle;
@@ -378,7 +386,7 @@ thead td abbr, thead td sup, thead th acronym, thead th sup {
 	color: #cdf
 }
 
-.odds tbody tr:nth-child(2n) td {
+.odds tbody tr:nth-child(2n) {
 	background: #fcfaf5
 }
 

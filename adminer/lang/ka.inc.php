@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'შესვლა',
 	'Logout successful.' => 'გამოხვედით სისტემიდან.',
 	'Invalid credentials.' => 'არასწორი მომხმარებელი ან პაროლი.',
@@ -302,3 +302,5 @@ $translations = array(
 	'Database does not support password.' => 'ბაზაში არაა მხარდაჭერილი პაროლი.',
 	'Disable %s or enable %s or %s extensions.' => 'გათიშეთ %s ან ჩართეთ %s ან %s გაფართოება.',
 );
+
+// run `php ../../lang.php ka` to update this file

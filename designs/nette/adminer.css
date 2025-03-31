@@ -8,6 +8,9 @@ it is based on some parts of:
 - CSS icons by Hever - http://hev.cz
 */
 
+html {
+	--fg: #333;
+}
 
 body {
 	background: #FFF;
@@ -153,12 +156,16 @@ th, td {
 	vertical-align: top;
 }
 
-.odds tbody tr:nth-child(2n) th, .odds tbody tr:nth-child(2n) td {
+.odds tbody tr:nth-child(2n) {
 	background: #FCFAF5;
 }
 
 .js .checked th, .js .checked td {
 	background: #CEE0FC;
+}
+
+thead {
+	top: 40px;
 }
 
 thead th, thead td {

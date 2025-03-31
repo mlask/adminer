@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'تسجيل الدخول',
 	'Logout successful.' => 'تم تسجيل الخروج بنجاح.',
 	'Invalid credentials.' => 'بيانات الدخول غير صالحة.',
@@ -266,3 +266,5 @@ $translations = array(
 	'Edit all' => 'تعديل الكل',
 	'HH:MM:SS' => 'HH:MM:SS',
 );
+
+// run `php ../../lang.php ar` to update this file

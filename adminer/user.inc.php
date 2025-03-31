@@ -23,13 +23,13 @@ foreach ($privileges["Tables"] as $key => $val) {
 $new_grants = array();
 if ($_POST) {
 	foreach ($_POST["objects"] as $key => $val) {
-		$new_grants[$val] = (array) $new_grants[$val] + (array) $_POST["grants"][$key];
+		$new_grants[$val] = (array) $new_grants[$val] + idx($_POST["grants"], $key, array());
 	}
 }
 $grants = array();
 $old_pass = "";
 
-if (isset($_GET["host"]) && ($result = $connection->query("SHOW GRANTS FOR " . q($USER) . "@" . q($_GET["host"])))) { //! use information_schema for MySQL 5 - column names in column privileges are not escaped
+if (isset($_GET["host"]) && ($result = connection()->query("SHOW GRANTS FOR " . q($USER) . "@" . q($_GET["host"])))) { //! use information_schema for MySQL 5 - column names in column privileges are not escaped
 	while ($row = $result->fetch_row()) {
 		if (preg_match('~GRANT (.*) ON (.*) TO ~', $row[0], $match) && preg_match_all('~ *([^(,]*[^ ,(])( *\([^)]+\))?~', $match[1], $matches, PREG_SET_ORDER)) { //! escape the part between ON and TO
 			foreach ($matches as $val) {
@@ -113,7 +113,7 @@ if ($_POST && !$error) {
 
 		if ($created) {
 			// delete new user in case of an error
-			$connection->query("DROP USER $new_user");
+			connection()->query("DROP USER $new_user");
 		}
 	}
 }
@@ -148,7 +148,10 @@ echo "<table class='odds'>\n";
 echo "<thead><tr><th colspan='2'>" . lang('Privileges') . doc_link(array('sql' => "grant.html#priv_level"));
 $i = 0;
 foreach ($grants as $object => $grant) {
-	echo '<th>' . ($object != "*.*" ? "<input name='objects[$i]' value='" . h($object) . "' size='10' autocapitalize='off'>" : "<input type='hidden' name='objects[$i]' value='*.*' size='10'>*.*"); //! separate db, table, columns, PROCEDURE|FUNCTION, routine
+	echo '<th>' . ($object != "*.*"
+		? "<input name='objects[$i]' value='" . h($object) . "' size='10' autocapitalize='off'>"
+		: input_hidden("objects[$i]", "*.*") . "*.*"
+	); //! separate db, table, columns, PROCEDURE|FUNCTION, routine
 	$i++;
 }
 echo "</thead>\n";
@@ -192,5 +195,5 @@ echo "</table>\n";
 <?php if (isset($_GET["host"])) { ?>
 <input type="submit" name="drop" value="<?php echo lang('Drop'); ?>"><?php echo confirm(lang('Drop %s?', "$USER@$_GET[host]")); ?>
 <?php } ?>
-<input type="hidden" name="token" value="<?php echo $token; ?>">
+<?php echo input_token(); ?>
 </form>

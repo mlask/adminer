@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'நுழை',
 	'Logout successful.' => 'வெற்றிக‌ர‌மாய் வெளியேறியாயிற்று.',
 	'Invalid credentials.' => 'ச‌ரியான‌ விப‌ர‌ங்க‌ள் இல்லை.',
@@ -266,3 +266,5 @@ $translations = array(
 	'Edit all' => 'அனைத்தையும் தொகு',
 	'HH:MM:SS' => 'HH:MM:SS',
 );
+
+// run `php ../../lang.php ta` to update this file

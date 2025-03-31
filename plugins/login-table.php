@@ -16,13 +16,10 @@ CREATE TABLE login (
 * @license https://www.gnu.org/licenses/gpl-2.0.html GNU General Public License, version 2 (one or other)
 */
 class AdminerLoginTable {
-	/** @access protected */
-	var $database;
+	protected $database;
 
-	/** Set database of login table
-	* @param string
-	*/
-	function __construct($database) {
+	/** Set database of login table */
+	function __construct(string $database) {
 		$this->database = $database;
 	}
 

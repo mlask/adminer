@@ -9,13 +9,20 @@
 class AdminerTableStructure {
 
 	/** Print table structure in tabular format
-	* @param array data about individual fields
-	* @return bool
+	* @param Field[] $fields data about individual fields
 	*/
-	function tableStructurePrint($fields) {
+	function tableStructurePrint(array $fields, $tableStatus = null): bool {
 		echo "<div class='scrollable'>\n";
 		echo "<table class='nowrap odds'>\n";
-		echo "<thead><tr><th>" . Adminer\lang('Column') . "<th>" . Adminer\lang('Type') . "<th>" . Adminer\lang('Collation') . "<th>" . Adminer\lang('Nullable') . "<th>" . Adminer\lang('Default') . (Adminer\support("comment") ? "<th>" . Adminer\lang('Comment') : "") . "</thead>\n";
+		echo "<thead><tr>"
+			. "<th>" . Adminer\lang('Column')
+			. "<th>" . Adminer\lang('Type')
+			. "<th>" . Adminer\lang('Collation')
+			. "<th>" . Adminer\lang('Nullable')
+			. "<th>" . Adminer\lang('Default')
+			. (Adminer\support("comment") ? "<th>" . Adminer\lang('Comment') : "")
+			. "</thead>\n"
+		;
 		foreach ($fields as $field) {
 			echo "<tr><th>" . Adminer\h($field["field"]) . ($field["primary"] ? " (PRIMARY)" : "");
 			echo "<td><span>" . Adminer\h($field["full_type"]) . "</span>";

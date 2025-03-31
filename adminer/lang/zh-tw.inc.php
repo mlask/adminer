@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	// label for database system selection (MySQL, SQLite, ...)
 	'System' => '資料庫系統',
 	'Server' => '伺服器',
@@ -348,3 +348,5 @@ $translations = array(
 	'Type has been created.' => '已建立類型。',
 	'Alter type' => '修改類型',
 );
+
+// run `php ../../lang.php zh-tw` to update this file

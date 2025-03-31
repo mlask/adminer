@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'Logi sisse',
 	'Logout successful.' => 'Väljalogimine õnnestus.',
 	'Invalid credentials.' => 'Ebakorrektsed andmed.',
@@ -267,3 +267,5 @@ $translations = array(
 	'Edit all' => 'Muuda kõiki',
 	'HH:MM:SS' => 'HH:MM:SS',
 );
+
+// run `php ../../lang.php et` to update this file

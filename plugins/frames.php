@@ -7,13 +7,12 @@
 * @license https://www.gnu.org/licenses/gpl-2.0.html GNU General Public License, version 2 (one or other)
 */
 class AdminerFrames {
-	/** @access protected */
-	var $sameOrigin;
+	protected $sameOrigin;
 
 	/**
-	* @param bool allow running from the same origin only
+	* @param bool $sameOrigin allow running from the same origin only
 	*/
-	function __construct($sameOrigin = false) {
+	function __construct(bool $sameOrigin = false) {
 		$this->sameOrigin = $sameOrigin;
 	}
 

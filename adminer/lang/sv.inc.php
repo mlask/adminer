@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	// label for database system selection (MySQL, SQLite, ...)
 	'System' => 'System',
 	'Server' => 'Server',
@@ -348,3 +348,5 @@ $translations = array(
 	'Type has been created.' => 'Typ har skapats.',
 	'Alter type' => 'Ändra typ',
 );
+
+// run `php ../../lang.php sv` to update this file

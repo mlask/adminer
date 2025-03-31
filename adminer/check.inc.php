@@ -24,7 +24,7 @@ if ($row && !$error) {
 page_header(($name != "" ? lang('Alter check') . ": " . h($name) : lang('Create check')), $error, array("table" => $TABLE));
 
 if (!$row) {
-	$checks = $driver->checkConstraints($TABLE);
+	$checks = driver()->checkConstraints($TABLE);
 	$row = array("name" => $name, "clause" => $checks[$name]);
 }
 ?>
@@ -47,5 +47,5 @@ echo doc_link(array(
 <?php if ($name != "") { ?>
 <input type="submit" name="drop" value="<?php echo lang('Drop'); ?>"><?php echo confirm(lang('Drop %s?', $name)); ?>
 <?php } ?>
-<input type="hidden" name="token" value="<?php echo $token; ?>">
+<?php echo input_token(); ?>
 </form>

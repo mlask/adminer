@@ -3,27 +3,31 @@ namespace Adminer;
 
 // PDO can be used in several database drivers
 if (extension_loaded('pdo')) {
-	abstract class PdoDb {
-		var $_result, $server_info, $affected_rows, $errno, $error, $pdo;
+	abstract class PdoDb extends SqlDb {
+		protected \PDO $pdo;
 
-		function dsn($dsn, $username, $password, $options = array()) {
+		/** Connect to server using DSN
+		* @param mixed[] $options
+		* @return string error message
+		*/
+		function dsn(string $dsn, string $username, string $password, array $options = array()): string {
 			$options[\PDO::ATTR_ERRMODE] = \PDO::ERRMODE_SILENT;
-			$options[\PDO::ATTR_STATEMENT_CLASS] = array('Adminer\PdoDbStatement');
+			$options[\PDO::ATTR_STATEMENT_CLASS] = array('Adminer\PdoResult');
 			try {
 				$this->pdo = new \PDO($dsn, $username, $password, $options);
-			} catch (Exception $ex) {
-				auth_error(h($ex->getMessage()));
+			} catch (\Exception $ex) {
+				return $ex->getMessage();
 			}
 			$this->server_info = @$this->pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
+			return '';
 		}
 
-		abstract function select_db($database);
-
-		function quote($string) {
+		function quote(string $string): string {
 			return $this->pdo->quote($string);
 		}
 
-		function query($query, $unbuffered = false) {
+		function query(string $query, bool $unbuffered = false) {
+			/** @var Result|bool */
 			$result = $this->pdo->query($query);
 			$this->error = "";
 			if (!$result) {
@@ -37,13 +41,9 @@ if (extension_loaded('pdo')) {
 			return $result;
 		}
 
-		function multi_query($query) {
-			return $this->_result = $this->query($query);
-		}
-
 		function store_result($result = null) {
 			if (!$result) {
-				$result = $this->_result;
+				$result = $this->multi;
 				if (!$result) {
 					return false;
 				}
@@ -56,26 +56,19 @@ if (extension_loaded('pdo')) {
 			return true;
 		}
 
-		function next_result() {
-			if (!$this->_result) {
+		function next_result(): bool {
+			/** @var PdoResult|bool */
+			$result = $this->multi;
+			if (!is_object($result)) {
 				return false;
 			}
-			$this->_result->_offset = 0;
-			return @$this->_result->nextRowset(); // @ - PDO_PgSQL doesn't support it
-		}
-
-		function result($query, $field = 0) {
-			$result = $this->query($query);
-			if (!$result) {
-				return false;
-			}
-			$row = $result->fetch();
-			return $row[$field];
+			$result->_offset = 0;
+			return @$result->nextRowset(); // @ - PDO_PgSQL doesn't support it
 		}
 	}
 
-	class PdoDbStatement extends \PDOStatement {
-		var $_offset = 0, $num_rows;
+	class PdoResult extends \PDOStatement {
+		public $_offset = 0, $num_rows;
 
 		function fetch_assoc() {
 			return $this->fetch(\PDO::FETCH_ASSOC);
@@ -85,11 +78,11 @@ if (extension_loaded('pdo')) {
 			return $this->fetch(\PDO::FETCH_NUM);
 		}
 
-		function fetch_field() {
+		function fetch_field(): \stdClass {
 			$row = (object) $this->getColumnMeta($this->_offset++);
-			$row->orgtable = $row->table;
-			$row->orgname = $row->name;
-			$row->charsetnr = (in_array("blob", (array) $row->flags) ? 63 : 0);
+			$type = $row->pdo_type;
+			$row->type = ($type == \PDO::PARAM_INT ? 0 : 15);
+			$row->charsetnr = ($type == \PDO::PARAM_LOB || (isset($row->flags) && in_array("blob", (array) $row->flags)) ? 63 : 0);
 			return $row;
 		}
 

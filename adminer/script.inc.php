@@ -25,7 +25,7 @@ if ($_GET["script"] == "db") {
 						$sums[$key] += ($table_status["Engine"] != "InnoDB" || $key != "Data_free" ? $table_status[$key] : 0);
 					}
 				} elseif (array_key_exists($key, $table_status)) {
-					json_row("$key-$name");
+					json_row("$key-$name", "?");
 				}
 			}
 		}
@@ -36,10 +36,10 @@ if ($_GET["script"] == "db") {
 	json_row("");
 
 } elseif ($_GET["script"] == "kill") {
-	$connection->query("KILL " . number($_POST["kill"]));
+	connection()->query("KILL " . number($_POST["kill"]));
 
 } else { // connect
-	foreach (count_tables($adminer->databases()) as $db => $val) {
+	foreach (count_tables(adminer()->databases()) as $db => $val) {
 		json_row("tables-$db", $val);
 		json_row("size-$db", db_size($db));
 	}

@@ -1,7 +1,7 @@
 <?php
 namespace Adminer;
 
-$translations = array(
+Lang::$translations = array(
 	'Login' => 'Entrar',
 	'Logout successful.' => 'Saída bem sucedida.',
 	'Invalid credentials.' => 'Identificação inválida.',
@@ -262,3 +262,5 @@ $translations = array(
 	'now' => 'agora',
 	'ltr' => 'ltr',
 );
+
+// run `php ../../lang.php pt-br` to update this file
