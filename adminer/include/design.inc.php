@@ -43,10 +43,12 @@ function page_header(string $title, string $error = "", $breadcrumb = array(), s
 		: ($has_dark ?: null) // only adminer-dark.css - dark, neither - autoswitching
 	);
 	$media = " media='(prefers-color-scheme: dark)'";
+	/*
 	if ($dark !== false) {
 		echo "<link rel='stylesheet'" . ($dark ? "" : $media) . " href='../adminer/static/dark.css'>\n";
 	}
 	echo "<meta name='color-scheme' content='" . ($dark === null ? "light dark" : ($dark ? "dark" : "light")) . "'>\n";
+	*/
 	// this is matched by compile.php
 	echo script_src("../adminer/static/functions.js");
 	echo script_src("static/editing.js");

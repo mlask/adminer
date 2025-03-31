@@ -96,7 +96,7 @@ class Adminer {
 	* @param bool $dark dark CSS: false to disable, true to force, null to base on user preferences
 	* @return bool true to link favicon.ico
 	*/
-	function head(?bool $dark = null): bool {
+	function head(?bool $dark = false): bool {
 		// this is matched by compile.php
 		echo "<link rel='stylesheet' href='../externals/jush/jush.css'>\n";
 		echo ($dark !== false ? "<link rel='stylesheet'" . ($dark ? "" : " media='(prefers-color-scheme: dark)'") . " href='../externals/jush/jush-dark.css'>\n" : "");
